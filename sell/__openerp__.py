@@ -27,6 +27,7 @@
     'depends': ['mail', 'core', 'warehouse', 'money'],
     'data': [
             'sell_data.xml',
+            'security/groups.xml',
             'sell_view.xml',
             'report/customer_statements_view.xml',
             'report/sell_order_track_view.xml',
@@ -35,6 +36,7 @@
             'report/sell_summary_partner_view.xml',
             'report/sell_summary_staff_view.xml',
             'report/sell_receipt_view.xml',
+            'report/sell_top_ten_view.xml',
             'wizard/customer_statements_wizard_view.xml',
             'wizard/sell_order_track_wizard_view.xml',
             'wizard/sell_order_detail_wizard_view.xml',
@@ -42,6 +44,7 @@
             'wizard/sell_summary_partner_wizard_view.xml',
             'wizard/sell_summary_staff_wizard_view.xml',
             'wizard/sell_receipt_wizard_view.xml',
+            'wizard/sell_top_ten_wizard_view.xml',
             'security/ir.model.access.csv',
             ],
     'demo': [

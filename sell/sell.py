@@ -42,8 +42,18 @@ class sell_order(models.Model):
             else:
                 self.goods_state = u'全部出库'
 
-    partner_id = fields.Many2one('partner', u'客户', states=READONLY_STATES)
-    staff_id = fields.Many2one('staff', u'销售员', states=READONLY_STATES)
+    @api.model
+    def _default_warehouse(self):
+        if self.env.context.get('warehouse_type'):
+            return self.env['warehouse'].get_warehouse_by_type(
+                        self.env.context.get('warehouse_type'))
+
+        return self.env['warehouse'].browse()
+
+    partner_id = fields.Many2one('partner', u'客户',
+                            ondelete='restrict', states=READONLY_STATES)
+    staff_id = fields.Many2one('staff', u'销售员',
+                            ondelete='restrict', states=READONLY_STATES)
     date = fields.Date(u'单据日期', states=READONLY_STATES,
                        default=lambda self: fields.Date.context_today(self),
                        select=True, copy=False, help=u"默认是订单创建日期")
@@ -53,6 +63,9 @@ class sell_order(models.Model):
         select=True, copy=False, help=u"订单的要求交货日期")
     type = fields.Selection([('sell', u'销货'), ('return', u'退货')], u'类型', 
                             default='sell', states=READONLY_STATES)
+    warehouse_id = fields.Many2one('warehouse', u'调出仓库',
+                                   ondelete='restrict',
+                                   default=_default_warehouse)
     name = fields.Char(u'单据编号', select=True, copy=False,
                        default='/', help=u"创建时它会自动生成下一个编号")
     line_ids = fields.One2many('sell.order.line', 'order_id', u'销货订单行',
@@ -65,11 +78,17 @@ class sell_order(models.Model):
     amount = fields.Float(string=u'优惠后金额', store=True, readonly=True,
                         compute='_compute_amount', track_visibility='always',
                         digits_compute=dp.get_precision('Amount'))
-    approve_uid = fields.Many2one('res.users', u'审核人', copy=False)
+    pre_receipt = fields.Float(u'预收款', states=READONLY_STATES,
+                           digits_compute=dp.get_precision('Amount'))
+    bank_account_id = fields.Many2one('bank.account', u'结算账户',
+                                      ondelete='restrict')
+    approve_uid = fields.Many2one('res.users', u'审核人', copy=False,
+                                  ondelete='restrict')
     state = fields.Selection(SELL_ORDER_STATES, u'审核状态', readonly=True,
                              help=u"销货订单的审核状态", select=True, 
                              copy=False, default='draft')
     goods_state = fields.Char(u'发货状态', compute=_get_sell_goods_state,
+                              store=True,
                               help=u"销货订单的发货状态", select=True, copy=False)
     cancelled = fields.Boolean(u'已终止')
 
@@ -96,6 +115,37 @@ class sell_order(models.Model):
         return super(sell_order, self).unlink()
 
     @api.one
+    def generate_receipt_order(self):
+        '''由销货订单生成收款单'''
+        # 入库单/退货单
+        if self.type == 'sell':
+            amount = self.amount
+            this_reconcile = self.pre_receipt
+        else:
+            amount = - self.amount
+            this_reconcile = - self.pre_receipt
+        if self.pre_receipt:
+            money_lines = []
+            money_lines.append({
+                'bank_id': self.bank_account_id.id,
+                'amount': this_reconcile,
+            })
+
+            rec = self.with_context(type='get')
+            money_order = rec.env['money.order'].create({
+                                'partner_id': self.partner_id.id,
+                                'date': fields.Date.context_today(self),
+                                'line_ids':
+                                [(0, 0, line) for line in money_lines],
+                                'type': 'get',
+                                'amount': amount,
+                                'reconciled': this_reconcile,
+                                'to_reconcile': amount,
+                                'state': 'draft',
+                            })
+            money_order.money_order_done()
+
+    @api.one
     def sell_order_done(self):
         '''审核销货订单'''
         if self.state == 'done':
@@ -105,7 +155,12 @@ class sell_order(models.Model):
         for line in self.line_ids:
             if line.quantity == 0:
                 raise except_orm(u'错误', u'请输入产品数量！')
-        # TODO:销售预收款
+        if self.bank_account_id and not self.pre_receipt:
+            raise except_orm(u'警告！', u'结算账户不为空时，需要输入预付款！')
+        if not self.bank_account_id and self.pre_receipt:
+            raise except_orm(u'警告！', u'预付款不为空时，请选择结算账户！')
+        # 销售预收款生成收款单
+        self.generate_receipt_order()
         self.sell_generate_delivery()
         self.state = 'done'
         self.approve_uid = self._uid
@@ -230,6 +285,12 @@ class sell_order_line(models.Model):
     _name = 'sell.order.line'
     _description = u'销货订单明细'
 
+    @api.one
+    @api.depends('goods_id')
+    def _compute_using_attribute(self):
+        '''返回订单行中产品是否使用属性'''
+        self.using_attribute = self.goods_id.attribute_ids and True or False
+
     @api.model
     def _default_warehouse_dest(self):
         context = self._context or {}
@@ -252,12 +313,15 @@ class sell_order_line(models.Model):
 
     order_id = fields.Many2one('sell.order', u'订单编号', select=True, 
                                required=True, ondelete='cascade')
-    goods_id = fields.Many2one('goods', u'商品')
-    attribute_id = fields.Many2one('attribute', u'属性', 
+    goods_id = fields.Many2one('goods', u'商品', ondelete='restrict')
+    using_attribute = fields.Boolean(u'使用属性', compute=_compute_using_attribute)
+    attribute_id = fields.Many2one('attribute', u'属性',
+                                   ondelete='restrict', 
                                    domain="[('goods_id', '=', goods_id)]")
-    uom_id = fields.Many2one('uom', u'单位')
-    warehouse_id = fields.Many2one('warehouse', u'仓库')
+    uom_id = fields.Many2one('uom', u'单位', ondelete='restrict')
+    warehouse_id = fields.Many2one('warehouse', u'仓库', ondelete='restrict')
     warehouse_dest_id = fields.Many2one('warehouse', u'调入仓库', 
+                                        ondelete='restrict',
                                         default=_default_warehouse_dest)
     quantity = fields.Float(u'数量', default=1,
                             digits_compute=dp.get_precision('Quantity'))
@@ -288,7 +352,6 @@ class sell_order_line(models.Model):
         '''当订单行的产品变化时，带出产品上的单位、默认仓库、价格'''
         if self.goods_id:
             self.uom_id = self.goods_id.uom_id
-            self.warehouse_id = self.goods_id.default_wh  # 取产品的默认仓库
             matched = False   # 在商品的价格清单中是否找到匹配的价格
             for line in self.goods_id.price_ids:
                 if self.order_id.partner_id.c_category_id == line.category_id:
@@ -331,42 +394,38 @@ class sell_delivery(models.Model):
         self.total_debt = self.partner_id.receivable + self.debt
 
     @api.one
-    @api.depends('state', 'amount', 'receipt')
+    @api.depends('is_return', 'invoice_id.reconciled', 'invoice_id.amount')
     def _get_sell_money_state(self):
         '''返回收款状态'''
         if not self.is_return:
-            if self.state == 'draft':
+            if self.invoice_id.reconciled == 0:
                 self.money_state = u'未收款'
-            else:
-                if self.receipt == 0:
-                    self.money_state = u'未收款'
-                elif self.amount > self.receipt:
-                    self.money_state = u'部分收款'
-                elif self.amount == self.receipt:
-                    self.money_state = u'全部收款'
+            elif self.invoice_id.reconciled < self.invoice_id.amount:
+                self.money_state = u'部分收款'
+            elif self.invoice_id.reconciled == self.invoice_id.amount:
+                self.money_state = u'全部收款'
 
     @api.one
-    @api.depends('state', 'amount', 'receipt')
+    @api.depends('is_return', 'invoice_id.reconciled', 'invoice_id.amount')
     def _get_sell_return_state(self):
         '''返回退款状态'''
         if self.is_return:
-            if self.state == 'draft':
+            if self.invoice_id.reconciled == 0:
                 self.return_state = u'未退款'
-            else:
-                if self.receipt == 0:
-                    self.return_state = u'未退款'
-                elif self.amount > self.receipt:
-                    self.return_state = u'部分退款'
-                elif self.amount == self.receipt:
-                    self.return_state = u'全部退款'
+            elif abs(self.invoice_id.reconciled) < abs(self.invoice_id.amount):
+                self.return_state = u'部分退款'
+            elif self.invoice_id.reconciled == self.invoice_id.amount:
+                self.return_state = u'全部退款'
 
     sell_move_id = fields.Many2one('wh.move', u'发货单', required=True, 
                                    ondelete='cascade')
     is_return = fields.Boolean(u'是否退货', default=lambda self: \
                                self.env.context.get('is_return'))
-    staff_id = fields.Many2one('staff', u'销售员')
-    order_id = fields.Many2one('sell.order', u'源单号', copy=False)
-    invoice_id = fields.Many2one('money.invoice', u'发票号', copy=False)
+    staff_id = fields.Many2one('staff', u'销售员', ondelete='restrict')
+    order_id = fields.Many2one('sell.order', u'源单号', copy=False,
+                               ondelete='cascade')
+    invoice_id = fields.Many2one('money.invoice', u'发票号',
+                                 copy=False, ondelete='restrict')
     date_due = fields.Date(u'到期日期', copy=False)
     discount_rate = fields.Float(u'优惠率(%)', states=READONLY_STATES)
     discount_amount = fields.Float(u'优惠金额', states=READONLY_STATES,
@@ -378,7 +437,8 @@ class sell_delivery(models.Model):
                         digits_compute=dp.get_precision('Amount'))
     receipt = fields.Float(u'本次收款', states=READONLY_STATES,
                            digits_compute=dp.get_precision('Amount'))
-    bank_account_id = fields.Many2one('bank.account', u'结算账户')
+    bank_account_id = fields.Many2one('bank.account',
+                                      u'结算账户', ondelete='restrict')
     debt = fields.Float(u'本次欠款', compute=_compute_all_amount, 
                         store=True, readonly=True, copy=False,
                         digits_compute=dp.get_precision('Amount'))
@@ -388,8 +448,10 @@ class sell_delivery(models.Model):
     cost_line_ids = fields.One2many('cost.line', 'sell_id', u'销售费用', 
                                     copy=False)
     money_state = fields.Char(u'收款状态', compute=_get_sell_money_state,
+                              store=True, default=u'未收款',
                               help=u"销售发货单的收款状态", select=True, copy=False)
     return_state = fields.Char(u'退款状态', compute=_get_sell_return_state,
+                               store=True, default=u'未退款',
                                help=u"销售退货单的退款状态", select=True, copy=False)
 
     @api.one
@@ -450,9 +512,9 @@ class sell_delivery(models.Model):
             if line.goods_qty == 0:
                 raise except_orm(u'错误', u'请输入产品数量！')
         if self.bank_account_id and not self.receipt:
-            raise except_orm(u'警告！', u'结算账户不为空时，需要输入付款额！')
+            raise except_orm(u'警告！', u'结算账户不为空时，需要输入收款额！')
         if not self.bank_account_id and self.receipt:
-            raise except_orm(u'警告！', u'付款额不为空时，请选择结算账户！')
+            raise except_orm(u'警告！', u'收款额不为空时，请选择结算账户！')
         if self.receipt > self.amount:
             raise except_orm(u'警告！', u'本次收款金额不能大于优惠后金额！')
 
@@ -543,16 +605,19 @@ class wh_move_line(models.Model):
     _inherit = 'wh.move.line'
     _description = u'销售发货单行'
 
-    sell_line_id = fields.Many2one('sell.order.line', u'销货单行')
+    sell_line_id = fields.Many2one('sell.order.line', u'销货单行',
+                                   ondelete='cascade')
 
 
 class cost_line(models.Model):
     _inherit = 'cost.line'
 
-    sell_id = fields.Many2one('sell.delivery', u'出库单号')
+    sell_id = fields.Many2one('sell.delivery', u'出库单号',
+                              ondelete='cascade')
 
 
 class money_invoice(models.Model):
     _inherit = 'money.invoice'
 
-    move_id = fields.Many2one('wh.move', string=u'出入库单', readonly=True)
+    move_id = fields.Many2one('wh.move', string=u'出入库单',
+                              readonly=True, ondelete='cascade')

@@ -3,6 +3,24 @@
 import openerp.addons.decimal_precision as dp
 from openerp import models, fields, api
 
+# 单据自动编号，避免在所有单据对象上重载
+
+create_original = models.BaseModel.create
+
+@api.model
+@api.returns('self', lambda value: value.id)
+def create(self, vals):
+    if not self._name.split('.')[0] == 'mail' and not vals.get('name'):
+        next_name = self.env['ir.sequence'].get(self._name)
+        if next_name:
+            vals.update({'name': next_name})
+    record_id = create_original(self, vals)
+    return record_id
+
+models.BaseModel.create = create
+
+# 分类的类别
+
 CORE_CATEGORY_TYPE = [('customer', u'客户'),
                       ('supplier', u'供应商'),
                       ('goods', u'商品'),
@@ -10,8 +28,9 @@ CORE_CATEGORY_TYPE = [('customer', u'客户'),
                       ('income', u'收入'),
                       ('other_pay', u'其他支出'),
                       ('other_get', u'其他收入'),
-                      ('attribute', u'属性'),
-                      ('goods', u'产品')]
+                      ('attribute', u'属性')]
+# 成本计算方法，已实现 先入先出
+
 CORE_COST_METHOD = [('average', u'移动平均法'),
                     ('fifo', u'先进先出法'),
                     ]
@@ -32,9 +51,10 @@ class core_category(models.Model):
 
 class res_company(models.Model):
     _inherit = 'res.company'
-    start_date = fields.Date(u'启用日期')
-    quantity_digits = fields.Integer(u'数量小数位')
-    amount_digits = fields.Integer(u'单价小数位')
+    start_date = fields.Date(
+                    u'启用日期',
+                    required=True,
+                    default=lambda self: fields.Date.context_today(self))
     cost_method = fields.Selection(CORE_COST_METHOD, u'存货计价方法')
     draft_invoice = fields.Boolean(u'根据发票确认应收应付')
 
@@ -68,6 +88,27 @@ class partner(models.Model):
 
 class goods(models.Model):
     _name = 'goods'
+
+    @api.multi
+    def name_get(self):
+        '''在many2one字段里显示 编号_名称'''
+        res = []
+
+        for goods in self:
+            res.append((goods.id, goods.code + '_' + goods.name))
+        return res
+
+    @api.model
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        '''在many2one字段中支持按编号搜索'''
+        args = args or []
+        if name:
+            goods_ids = self.search([('code', 'ilike', name)])
+            if goods_ids:
+                return goods_ids.name_get()
+        return super(goods, self).name_search(
+                name=name, args=args, operator=operator, limit=limit)
+
     code = fields.Char(u'编号')
     name = fields.Char(u'名称')
     category_id = fields.Many2one('core.category', u'产品类别',

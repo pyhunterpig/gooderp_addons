@@ -6,6 +6,7 @@ from openerp.exceptions import except_orm
 
 class test_money_order(TransactionCase):
     '''测试收付款'''
+
     def test_money_order_unlink(self):
         '''测试收付款单删除'''
         self.env.ref('money.get_40000').money_order_done()
@@ -71,7 +72,7 @@ class test_money_order(TransactionCase):
         self.env.ref('money.get_40000').money_order_done()
         # 执行money_order_draft 遍历source_ids的操作
         invoice = self.env['money.invoice'].create({
-            'partner_id': self.env.ref('core.jd').id,
+            'partner_id': self.env.ref('core.jd').id, 'date': "2016-02-20",
             'name': 'invoice/2016001',
             'category_id': self.env.ref('money.core_category_sale').id,
             'amount': 200.0,
@@ -81,7 +82,7 @@ class test_money_order(TransactionCase):
         money = self.env['money.order'].with_context({'type': 'get'}) \
             .create({
                 'partner_id': self.env.ref('core.jd').id,
-                'name': 'GET/2016001',
+                'name': 'GET/2016001', 'date': "2016-02-20",
                 'note': 'zxy note',
                 'line_ids': [(0, 0, {
                     'bank_id': self.env.ref('core.comm').id,
@@ -109,9 +110,38 @@ class test_money_order(TransactionCase):
         with self.assertRaises(except_orm):
             self.env.ref('money.pay_2000').money_order_done()
 
+    def test_other_money_order_voucher(self):
+        # get  银行账户没设置科目
+        money1 = self.env['money.order'].with_context({'type': 'get'}) \
+            .create({
+                'partner_id': self.env.ref('core.jd').id,
+                'name': 'GET/2016001', 'date': "2016-02-20",
+                'note': 'zxy note',
+                'line_ids': [(0, 0, {
+                    'bank_id': self.env.ref('core.comm').id,
+                    'amount': 200.0, 'note': 'money note'})],
+                'type': 'get'})
+        money1.line_ids[0].bank_id.account_id = False
+        with self.assertRaises(except_orm):
+            money1.money_order_done()
+        money2 = self.env['money.order'].with_context({'type': 'pay'}) \
+            .create({
+                'partner_id': self.env.ref('core.jd').id,
+                'name': 'GET/2016001', 'date': "2016-02-20",
+                'note': 'zxy note',
+                'line_ids': [(0, 0, {
+                    'bank_id': self.env.ref('core.comm').id,
+                    'amount': 200.0, 'note': 'money note'})],
+                'type': 'pay'})
+        # pay  银行账户没设置科目
+        money2.line_ids[0].bank_id.account_id = False
+        with self.assertRaises(except_orm):
+            money2.money_order_done()
+
 
 class test_other_money_order(TransactionCase):
     '''测试其他收支单'''
+
     def test_other_money_order_unlink(self):
         '''测试其他收支单删除'''
         self.env.ref('money.other_get_60').other_money_done()
@@ -144,7 +174,7 @@ class test_other_money_order(TransactionCase):
         self.env.ref('money.other_pay_1000').other_money_done()
         # onchange_date  同时执行create时的type=other_get
         invoice = self.env['money.invoice'].create({
-            'name': 'invoice',
+            'name': 'invoice', 'date': "2016-02-20",
             'partner_id': self.env.ref('core.jd').id,
             'category_id': self.env.ref('money.core_category_sale').id,
             'amount': 10.0,
@@ -152,7 +182,7 @@ class test_other_money_order(TransactionCase):
         other = self.env['other.money.order'] \
             .with_context({'type': 'other_get'}) \
             .create({
-                'partner_id': self.env.ref('core.jd').id,
+                'partner_id': self.env.ref('core.jd').id, 'date': "2016-02-20",
                 'bank_id': self.env.ref('core.comm').id,
                 'line_ids': [(0, 0, {
                     'source_id': invoice.id,
@@ -168,6 +198,7 @@ class test_other_money_order(TransactionCase):
         other.other_money_draft()
         # onchange_date 执行type=other_pay
         invoice.partner_id = self.env.ref('core.lenovo').id,
+
         other = self.env['other.money.order'] \
             .with_context({'type': 'other_pay'}) \
             .create({
@@ -188,9 +219,30 @@ class test_other_money_order(TransactionCase):
         with self.assertRaises(except_orm):
             other.other_money_done()
 
+        # other_get 没有设置科目 银行账户没设置科目
+        #
+        other.line_ids[0].amount = 10
+        other.line_ids[0].category_id.account_id = False
+        with self.assertRaises(except_orm):
+            other.other_money_done()
+        # other_pay 没有设置科目 银行账户没设置科目
+        other = self.env['other.money.order'] \
+            .with_context({'type': 'other_get'}) \
+            .create({
+                'partner_id': self.env.ref('core.jd').id, 'date': "2016-02-20",
+                    'bank_id': self.env.ref('core.comm').id,
+                    'line_ids': [(0, 0, {
+                        'source_id': invoice.id,
+                        'category_id': self.env.ref('money.core_category_sale').id,
+                        'amount': 10.0})]})
+        other.line_ids[0].category_id.account_id = False
+        with self.assertRaises(except_orm):
+            other.other_money_done()
+
 
 class test_money_transfer_order(TransactionCase):
     '''测试其他资金转账单'''
+
     def test_money_transfer_order_unlink(self):
         '''测试资金转账单删除'''
         self.env.ref('money.get_40000').money_order_done()
@@ -245,9 +297,15 @@ class test_money_transfer_order(TransactionCase):
         money_transfer_300.line_ids.amount = -10.0
         with self.assertRaises(except_orm):
             money_transfer_300.money_transfer_done()
+        # 转出金额=0，则审核报错
+        money_transfer_300.line_ids.out_bank_id = self.env.ref('core.comm').id
+        money_transfer_300.line_ids.amount = 0
+        with self.assertRaises(except_orm):
+            money_transfer_300.money_transfer_done()
 
 
 class test_partner(TransactionCase):
+
     def test_partner(self):
         ''' 客户、供应商对账单 和  银行帐'''
         self.env.ref('core.jd').partner_statements()
@@ -256,6 +314,7 @@ class test_partner(TransactionCase):
 
 
 class test_go_live_order(TransactionCase):
+
     def test_go_live_order(self):
         '''期初余额'''
         self.env['go.live.order'].create({

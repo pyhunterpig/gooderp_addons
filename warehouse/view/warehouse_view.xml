@@ -39,7 +39,7 @@
             <field name='model'>wh.move.line</field>
             <field name='priority'>1</field>
             <field name='arch' type='xml'>
-                <tree string='库存调拨' create='0' edit='0'>
+                <tree string='库存调拨' create='0' edit='0' delete="0">
                     <field name='move_id' string='单据编号' />
                     <field name='goods_id' />
                     <field name='uom_id' />
@@ -160,6 +160,9 @@
                             <label string='出库单' />
                             <field name="name" class="oe_inline" readonly="1" />
                         </h1>
+                        <div>
+                        	<input type='text' class="ge_scan_barcode" autofocus="true"/>
+                        </div>
                         <group>
                             <group>
                                 <field name='partner_id' attrs="{'readonly': [('state', '!=', 'draft')]}" />
@@ -167,6 +170,7 @@
                             </group>
                             <group>
                                 <field name='type' required='1' attrs="{'readonly': [('state', '!=', 'draft')]}" />
+                                <field name='warehouse_id'/>
                             </group>
                         </group>
 
@@ -176,6 +180,7 @@
                                 'warehouse_dest_type': 'others',
                                 'lot': True,
                                 'type': 'out',
+                                'default_warehouse_id': warehouse_id,
                             }" attrs="{'readonly': [('state', '!=', 'draft')]}" />
                         </group>
 
@@ -235,6 +240,9 @@
                             <label string='入库单' />
                             <field name="name" class="oe_inline" readonly="1"/>
                         </h1>
+                        <div>
+                        	<input type='text' class="ge_scan_barcode" autofocus="true"/>
+                        </div>
                         <group>
                             <group>
                                 <field name='partner_id' attrs="{'readonly': [('state', '!=', 'draft')]}" />
@@ -242,6 +250,7 @@
                             </group>
                             <group>
                                 <field name='type' required='1' attrs="{'readonly': [('state', '!=', 'draft')]}" />
+                                <field name='warehouse_dest_id'/>
                             </group>
                         </group>
 
@@ -249,6 +258,7 @@
                             <field nolabel='1' name='line_in_ids' context="{
                                 'tree_view_ref': 'warehouse.wh_move_line_in_tree',
                                 'warehouse_type': 'others',
+                                'default_warehouse_dest_id': warehouse_dest_id,
                                 'type': 'in',
                             }" attrs="{'readonly': [('state', '!=', 'draft')]}" />
                         </group>
@@ -312,14 +322,22 @@
                         <group>
                             <group>
                                 <field name='partner_id' attrs="{'readonly': [('state', '!=', 'draft')]}" />
+                                <field name='warehouse_id'/>
                             </group>
                             <group>
                                 <field name='date' required='1' attrs="{'readonly': [('state', '!=', 'draft')]}" />
+                                <field name='warehouse_dest_id'/>
                             </group>
                         </group>
 
                         <group string='移库明细'>
-                            <field nolabel='1' name='line_out_ids' context="{'tree_view_ref': 'warehouse.wh_move_line_internal_tree', 'lot': True, 'type': 'internal'}" attrs="{'readonly': [('state', '!=', 'draft')]}" />
+                            <field nolabel='1' name='line_out_ids' context="{
+                            	'tree_view_ref': 'warehouse.wh_move_line_internal_tree',
+                            	'lot': True,
+                            	'type': 'internal',
+                            	'default_warehouse_id': warehouse_id,
+                            	'default_warehouse_dest_id': warehouse_dest_id}"
+                            	attrs="{'readonly': [('state', '!=', 'draft')]}" />
                         </group>
 
                         <group col='6'>
@@ -365,7 +383,7 @@
             <field name='name'>wh.move.matching.tree</field>
             <field name='model'>wh.move.matching</field>
             <field name='arch' type='xml'>
-                <tree string='匹配记录' >
+                <tree string='匹配记录' create="false" delete="false">
                     <field name='line_in_id' />
                     <field name='line_out_id' />
                     <field name='qty' />

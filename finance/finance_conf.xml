@@ -3,7 +3,7 @@
     <data>
 
         <!--会计根菜单-->
-        <menuitem id='finance_menu' name='会计'/>
+        <menuitem id='finance_menu' name='会计' groups='group_accountant'/>
 
         <menuitem id='finance_setting_menu' name='配置' parent='finance_menu' sequence='10'/>
         
@@ -37,7 +37,7 @@
                 <tree editable="TOP" string="科目">
                     <field name="code"/>
                     <field name="name"/>
-                    <field name="category"/>
+                    <field name="costs_types"/>
                     <field name="balance_directions"/>
                     <field name="auxiliary_financing"/>
                     <field name="state" widget='boolean_clickable'/>

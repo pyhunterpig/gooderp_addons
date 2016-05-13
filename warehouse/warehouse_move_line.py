@@ -41,20 +41,6 @@ class wh_move_line(models.Model):
         'sell.delivery.return': u'销售退货',
     }
 
-    @api.model
-    def _get_default_warehouse(self):
-        if self.env.context.get('warehouse_type'):
-            return self.env['warehouse'].get_warehouse_by_type(self.env.context.get('warehouse_type'))
-
-        return False
-
-    @api.model
-    def _get_default_warehouse_dest(self):
-        if self.env.context.get('warehouse_dest_type'):
-            return self.env['warehouse'].get_warehouse_by_type(self.env.context.get('warehouse_dest_type'))
-
-        return False
-
     @api.one
     @api.depends('goods_qty', 'price', 'discount_amount', 'tax_rate')
     def _compute_all_amount(self):
@@ -75,23 +61,29 @@ class wh_move_line(models.Model):
     date = fields.Datetime(u'完成日期', copy=False)
     type = fields.Selection(MOVE_LINE_TYPE, u'类型', default=lambda self: self.env.context.get('type'),)
     state = fields.Selection(MOVE_LINE_STATE, u'状态', copy=False, default='draft')
-    goods_id = fields.Many2one('goods', string=u'产品', required=True, index=True)
+    goods_id = fields.Many2one('goods', string=u'产品', required=True,
+                               index=True, ondelete='restrict')
     using_attribute = fields.Boolean(compute='_compute_using_attribute', string=u'使用属性')
-    attribute_id = fields.Many2one('attribute', u'属性')
+    attribute_id = fields.Many2one('attribute', u'属性', ondelete='restrict')
     using_batch = fields.Boolean(related='goods_id.using_batch', string=u'批号管理')
     force_batch_one = fields.Boolean(related='goods_id.force_batch_one', string=u'每批号数量为1')
     lot = fields.Char(u'批号')
     lot_id = fields.Many2one('wh.move.line', u'批号')
     lot_qty = fields.Float(related='lot_id.qty_remaining', string=u'批号数量',
                            digits_compute=dp.get_precision('Quantity'))
-    lot_uos_qty = fields.Float(u'批号辅助数量', digits_compute=dp.get_precision('Quantity'))
+    lot_uos_qty = fields.Float(u'批号辅助数量',
+                           digits_compute=dp.get_precision('Quantity'))
     production_date = fields.Date(u'生产日期', default=fields.Date.context_today)
     shelf_life = fields.Integer(u'保质期(天)')
     valid_date = fields.Date(u'有效期至')
-    uom_id = fields.Many2one('uom', string=u'单位', readonly=True)
-    uos_id = fields.Many2one('uom', string=u'辅助单位', readonly=True)
-    warehouse_id = fields.Many2one('warehouse', string=u'调出仓库', required=True, default=_get_default_warehouse)
-    warehouse_dest_id = fields.Many2one('warehouse', string=u'调入仓库', required=True, default=_get_default_warehouse_dest)
+    uom_id = fields.Many2one('uom', string=u'单位', ondelete='restrict')
+    uos_id = fields.Many2one('uom', string=u'辅助单位', ondelete='restrict')
+    warehouse_id = fields.Many2one('warehouse', u'调出仓库',
+                                   ondelete='restrict',
+                                   )
+    warehouse_dest_id = fields.Many2one('warehouse', u'调入仓库',
+                                        ondelete='restrict',
+                                        )
     goods_qty = fields.Float(u'数量', digits_compute=dp.get_precision('Quantity'), default=1)
     goods_uos_qty = fields.Float(u'辅助数量', digits_compute=dp.get_precision('Quantity'), default=1)
     price = fields.Float(u'单价', digits_compute=dp.get_precision('Amount'))
@@ -233,7 +225,7 @@ class wh_move_line(models.Model):
                     self.goods_qty)
             else:
                 self.goods_qty = self.goods_id.conversion_unit(
-                    self.goods_uos_qty)
+                    self.goods_uos_qty or 1)
 
         self.compute_suggested_cost()
         self.compute_lot_compatible()

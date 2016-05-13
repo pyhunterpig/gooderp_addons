@@ -25,11 +25,12 @@
     "author": 'ZhengXiang',
     "website": "http://www.osbzr.com",
     "category": "Generic Modules",
-    "depends": ['core', 'goods', 'decimal_precision', 'web_sublist', 'web_float_limit', 'web_readonly_bypass'],
+    "depends": ['core', 'goods', 'mobile', 'decimal_precision', 'web_sublist', 'web_float_limit', 'web_readonly_bypass'],
     "description": """
     """,
     "data": [
         'data/warehouse_data.xml',
+        'security/groups.xml',
         'wizard/save_bom_view.xml',
         'wizard/stock_transceive_wizard_view.xml',
         'wizard/lot_track_wizard_view.xml',
@@ -50,6 +51,9 @@
     'demo': [
         'data/warehouse_demo.xml',
      ],
+     'qweb': [
+        'data/copy_move_line.xml',
+    ],
     'installable': True,
     "active": False,
 }

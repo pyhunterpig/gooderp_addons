@@ -58,17 +58,6 @@ class Test_sell(TransactionCase):
         self.assertEqual(self.order.amount, 151600.00)
         # 正常的反审核
         self.order.sell_order_draft()
-        # 正常的  审核销售订单
-        # 正常审核后会生成 销售发货单
-
-        self.sell_delivery.sell_delivery_done()
-        self.sell_delivery.receipt = 0
-        self.sell_delivery._get_sell_money_state()
-        self.sell_delivery.amount
-        self.assertEqual(self.sell_delivery.money_state, u'未收款')
-        self.sell_delivery.receipt = self.sell_delivery.amount
-        self.sell_delivery._get_sell_money_state()
-        self.assertEqual(self.sell_delivery.money_state, u'全部收款')
 
         # with self.assertRaises(except_orm):
         #     self.order_2.sell_order_draft()
@@ -158,33 +147,11 @@ class Test_sell(TransactionCase):
         self.receipt = False
         with self.assertRaises(except_orm):
             self.sell_delivery_obj.sell_delivery_done()
-        # 付款状态测试 未退款
-        self.sell_delivery_obj._get_sell_return_state()
-        self.assertEqual(self.sell_delivery_obj.return_state, u'未退款')
-        self.sell_delivery_obj.state = 'done'
-        self.receipt = 0
-        self.sell_delivery_obj._get_sell_return_state()
-        self.assertEqual(self.sell_delivery_obj.return_state, u'未退款')
-        # 部分退款
-        self.sell_delivery_obj.receipt = 20
-
-        self.sell_delivery_obj._get_sell_return_state()
-        self.assertEqual(self.sell_delivery_obj.return_state, u'部分退款')
-        #  全部退款
-        self.sell_delivery_obj.receipt = self.sell_delivery_obj.amount
-        self.sell_delivery_obj._get_sell_return_state()
-        self.assertEqual(self.sell_delivery_obj.return_state, u'全部退款')
 
     def test_no_account_id(self):
         """销售发货单付款账户审核时为空 测试"""
         self.sell_delivery.bank_account_id = False
         self.sell_delivery.receipt = 20
-        with self.assertRaises(except_orm):
-            self.sell_delivery.sell_delivery_done()
-
-    def test_done_twice(self):
-        """销售发货单重复审核"""
-        self.sell_delivery.sell_delivery_done()
         with self.assertRaises(except_orm):
             self.sell_delivery.sell_delivery_done()
 
@@ -208,31 +175,26 @@ class Test_sell(TransactionCase):
         with self.assertRaises(except_orm):
             self.sell_delivery.sell_delivery_done()
 
-    def test_sell_done(self):
-        ''' 测试审核销货订单  '''
-        order = self.env.ref('sell.sell_order_1')
 
-        # 审核销货订单
-        order.sell_order_done()
-        with self.assertRaises(except_orm):
-            order.sell_order_done()
+class test_sell_order(TransactionCase):
 
-        # 未填数量应报错
-        order.sell_order_draft()
-        for line in order.line_ids:
-            line.quantity = 0
-        with self.assertRaises(except_orm):
-            order.sell_order_done()
+    def setUp(self):
+        super(test_sell_order, self).setUp()
+        self.order = self.env.ref('sell.sell_order_1')
 
-    def test_sell_draft(self):
-        ''' 测试反审核销货订单  '''
-        order = self.env.ref('sell.sell_order_1')
-
-        # 反审核销货订单
-        order.sell_order_done()
-        order.sell_order_draft()
-        with self.assertRaises(except_orm):
-            order.sell_order_draft()
+    def test_default_warehouse(self):
+        '''新建销货订单时调出仓库的默认值'''
+        order = self.env['sell.order'].with_context({
+             'warehouse_type': 'stock'
+             }).create({})
+        # 验证明细行上仓库是否是销货订单上调出仓库
+        hd_stock = self.browse_ref('warehouse.hd_stock')
+        order.warehouse_id = hd_stock
+        line = order.line_ids.with_context({
+            'default_warehouse_id': order.warehouse_id}).create({
+            'order_id': order.id})
+        self.assertTrue(line.warehouse_id == hd_stock)
+        self.env['sell.order'].create({})
 
     def test_unlink(self):
         '''测试删除已审核的销货订单'''
@@ -244,24 +206,70 @@ class Test_sell(TransactionCase):
         self.order.sell_order_draft()
         self.order.unlink()
 
-    def test_sell_delivery_unlink(self):
-        '''测试删除销售发货/退货单'''
-        # 测试是否可以删除已审核的单据
-        self.sell_delivery.sell_delivery_done()
+    def test_sell_order_done(self):
+        '''测试审核销货订单'''
+        # 审核销货订单
+        self.order.sell_order_done()
         with self.assertRaises(except_orm):
-            self.sell_delivery.unlink()
+            self.order.sell_order_done()
 
-        # 删除销售发货单时，测试能否删除发货单行
-        sell_delivery = self.sell_delivery.copy()
-        move_id = sell_delivery.sell_move_id.id
-        sell_delivery.unlink()
-        move = self.env['wh.move'].search(
-               [('id', '=', move_id)])
-        self.assertTrue(not move)
-        self.assertTrue(not move.line_out_ids)
+        # 未填数量应报错
+        self.order.sell_order_draft()
+        for line in self.order.line_ids:
+            line.quantity = 0
+        with self.assertRaises(except_orm):
+            self.order.sell_order_done()
+
+        # 输入预收款和结算账户
+        bank_account = self.env.ref('core.alipay')
+        bank_account.balance = 1000000
+        self.order.pre_receipt = 50.0
+        self.order.bank_account_id = bank_account
+        for line in self.order.line_ids:
+            line.quantity = 1
+        self.order.sell_order_done()
+
+        # 预收款不为空时，请选择结算账户！
+        self.order.sell_order_draft()
+        self.order.bank_account_id = False
+        self.order.pre_receipt = 50.0
+        with self.assertRaises(except_orm):
+            self.order.sell_order_done()
+        # 结算账户不为空时，需要输入预收款！
+        self.order.bank_account_id = bank_account
+        self.order.pre_receipt = 0
+        with self.assertRaises(except_orm):
+            self.order.sell_order_done()
+
+        # 没有订单行时审核报错
+        for line in self.order.line_ids:
+            line.unlink()
+        with self.assertRaises(except_orm):
+            self.order.sell_order_done()
+
+    def test_sell_order_draft(self):
+        ''' 测试反审核销货订单  '''
+        self.order.sell_order_done()
+        self.order.sell_order_draft()
+        with self.assertRaises(except_orm):
+            self.order.sell_order_draft()
+
+
+class test_sell_order_line(TransactionCase):
+
+    def setUp(self):
+        super(test_sell_order_line, self).setUp()
+        self.order = self.env.ref('sell.sell_order_1')
+
+    def test_compute_using_attribute(self):
+        '''返回订单行中产品是否使用属性'''
+        for line in self.order.line_ids:
+            self.assertTrue(not line.using_attribute)
+            line.goods_id = self.env.ref('goods.keyboard')
+            self.assertTrue(line.using_attribute)
 
     def test_onchange_goods_id(self):
-        '''当销货订单行的产品变化时，带出产品上的单位、默认仓库、价格'''
+        '''当销货订单行的产品变化时，带出产品上的单位、价格'''
         goods = self.env.ref('goods.keyboard')
         goods.default_wh = self.env.ref('warehouse.hd_stock').id
         c_category_id = self.order.partner_id.c_category_id
@@ -272,8 +280,6 @@ class Test_sell(TransactionCase):
             line.goods_id = goods
             line.onchange_goods_id()
             self.assertTrue(line.uom_id.name == u'件')
-            wh_id = line.warehouse_id.id
-            self.assertTrue(wh_id == goods.default_wh.id)
 
             # 测试价格是否是商品价格清单中的价格
             self.assertTrue(line.price == price_ids.price)
@@ -288,7 +294,7 @@ class test_sell_delivery(TransactionCase):
     def setUp(self):
         '''准备基本数据'''
         super(test_sell_delivery, self).setUp()
-        self.order = self.env.ref('sell.sell_order_1')
+        self.order = self.env.ref('sell.sell_order_2')
         self.order.sell_order_done()
         self.delivery = self.env['sell.delivery'].search(
                        [('order_id', '=', self.order.id)])
@@ -299,8 +305,78 @@ class test_sell_delivery(TransactionCase):
         warehouse_obj = self.env.ref('warehouse.wh_in_whin0')
         warehouse_obj.approve_order()
 
+        self.bank_account = self.env.ref('core.alipay')
+        self.bank_account.balance = 10000
+
+    def test_get_sell_money_state(self):
+        '''测试返回收款状态'''
+        # 未收款
+        self.delivery.sell_delivery_done()
+        self.delivery._get_sell_money_state()
+        self.assertEqual(self.delivery.money_state, u'未收款')
+
+        # 部分收款
+        delivery = self.delivery.copy()
+        delivery.receipt = delivery.amount - 1
+        delivery.bank_account_id = self.bank_account
+        delivery.sell_delivery_done()
+        delivery._get_sell_money_state()
+        self.assertEqual(delivery.money_state, u'部分收款')
+
+        # 全部收款
+        delivery = self.delivery.copy()
+        delivery.receipt = delivery.amount
+        delivery.bank_account_id = self.bank_account
+        delivery.sell_delivery_done()
+        delivery._get_sell_money_state()
+        self.assertEqual(delivery.money_state, u'全部收款')
+
+    def test_get_sell_return_state(self):
+        '''测试返回退款状态'''
+        #  未退款
+        self.return_delivery.sell_delivery_done()
+        self.return_delivery._get_sell_return_state()
+        self.assertEqual(self.return_delivery.return_state, u'未退款')
+
+        #  部分退款
+        return_delivery = self.return_delivery.copy()
+        return_delivery.receipt = return_delivery.amount - 1
+        return_delivery.bank_account_id = self.bank_account
+        return_delivery.sell_delivery_done()
+        return_delivery._get_sell_return_state()
+        self.assertEqual(return_delivery.return_state, u'部分退款')
+
+        #  全部退款
+        return_delivery = self.return_delivery.copy()
+        return_delivery.receipt = return_delivery.amount
+        return_delivery.bank_account_id = self.bank_account
+        return_delivery.sell_delivery_done()
+        return_delivery._get_sell_return_state()
+        self.assertEqual(return_delivery.return_state, u'全部退款')
+
+    def test_unlink(self):
+        '''测试删除销售发货/退货单'''
+        # 测试是否可以删除已审核的单据
+        self.delivery.sell_delivery_done()
+        with self.assertRaises(except_orm):
+            self.delivery.unlink()
+
+        # 删除销售发货单时，测试能否删除发货单行
+        delivery = self.delivery.copy()
+        move_id = delivery.sell_move_id.id
+        delivery.unlink()
+        move = self.env['wh.move'].search(
+               [('id', '=', move_id)])
+        self.assertTrue(not move)
+        self.assertTrue(not move.line_out_ids)
+
     def test_sell_delivery_done(self):
         '''测试审核发货单/退货单'''
+        # 销售发货单重复审核
+        delivery = self.delivery.copy()
+        delivery.sell_delivery_done()
+        with self.assertRaises(except_orm):
+            delivery.sell_delivery_done()
         # 发货单审核时未填数量应报错
         for line in self.delivery.line_out_ids:
             line.goods_qty = 0
@@ -311,6 +387,21 @@ class test_sell_delivery(TransactionCase):
             line.goods_qty = 0
         with self.assertRaises(except_orm):
             self.return_delivery.sell_delivery_done()
+
+    def test_scan_barcode(self):
+        '''销售扫码出入库'''
+        warehouse = self.env['wh.move']
+        barcode = '12345678987'
+        #销售退货扫码
+        model_name = 'sell.delivery'
+        warehouse.scan_barcode(model_name,barcode,self.return_delivery.id)
+        warehouse.scan_barcode(model_name,barcode,self.return_delivery.id)
+        #销售出库单扫码
+        sell_order = self.env.ref('sell.sell_order_1')
+        sell_order.sell_order_done()
+        delivery_order = self.env['sell.delivery'].search([('order_id', '=', sell_order.id)])
+        warehouse.scan_barcode(model_name,barcode,delivery_order.id)
+        warehouse.scan_barcode(model_name,barcode,delivery_order.id)
 
 
 class test_wh_move_line(TransactionCase):

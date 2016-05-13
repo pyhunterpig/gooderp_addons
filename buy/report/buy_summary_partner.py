@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import openerp.addons.decimal_precision as dp
-from openerp import fields, models
+from openerp import fields, models, api
 import datetime
 
 
@@ -10,6 +10,7 @@ class buy_summary_partner(models.Model):
     _inherit = 'report.base'
     _description = u'采购汇总表（按供应商）'
 
+    id_lists = fields.Text(u'移动明细行id列表')
     date = fields.Date(u'日期')
     s_category = fields.Char(u'供应商类别')
     partner = fields.Char(u'供应商')
@@ -29,8 +30,9 @@ class buy_summary_partner(models.Model):
     def select_sql(self, sql_type='out'):
         return '''
         SELECT MIN(wml.id) as id,
+               array_agg(wml.id) AS id_lists,
                MIN(wml.date) AS date,
-               s_categ.name AS s_category,
+               c_categ.name AS s_category,
                partner.name AS partner,
                goods.code AS goods_code,
                goods.name AS goods,
@@ -51,8 +53,8 @@ class buy_summary_partner(models.Model):
         FROM wh_move_line AS wml
             LEFT JOIN wh_move wm ON wml.move_id = wm.id
             LEFT JOIN partner ON wm.partner_id = partner.id
-            LEFT JOIN core_category AS s_categ
-                 ON partner.s_category_id = s_categ.id
+            LEFT JOIN core_category AS c_categ
+                 ON partner.s_category_id = c_categ.id
             LEFT JOIN goods ON wml.goods_id = goods.id
             LEFT JOIN attribute AS attr ON wml.attribute_id = attr.id
             LEFT JOIN warehouse AS wh ON wml.warehouse_dest_id = wh.id
@@ -66,6 +68,8 @@ class buy_summary_partner(models.Model):
             extra += 'AND partner.id = {partner_id}'
         if self.env.context.get('goods_id'):
             extra += 'AND goods.id = {goods_id}'
+        if self.env.context.get('s_category_id'):
+            extra += 'AND c_categ.id = {s_category_id}'
 
         return '''
         WHERE wml.state = 'done'
@@ -93,6 +97,8 @@ class buy_summary_partner(models.Model):
             context.get('partner_id')[0] or '',
             'goods_id': context.get('goods_id') and
             context.get('goods_id')[0] or '',
+            's_category_id': context.get('s_category_id') and
+            context.get('s_category_id')[0] or '',
         }
 
     def _compute_order(self, result, order):
@@ -103,3 +109,30 @@ class buy_summary_partner(models.Model):
         collection = self.execute_sql(sql_type='out')
 
         return collection
+
+    @api.multi
+    def view_detail(self):
+        '''采购汇总表（按供应商）查看明细按钮'''
+        line_ids = []
+        res = []
+        move_lines = []
+        result = self.get_data_from_cache()
+        for line in result:
+            if line.get('id') == self.id:
+                line_ids = line.get('id_lists')
+                move_lines = self.env['wh.move.line'].search(
+                        [('id', 'in', line_ids)])
+
+        for move_line in move_lines:
+            detail = self.env['buy.order.detail'].search(
+                [('order_name', '=', move_line.move_id.name)])
+            res.append(detail.id)
+
+        return {
+            'name': u'采购明细表',
+            'view_mode': 'tree',
+            'view_id': False,
+            'res_model': 'buy.order.detail',
+            'type': 'ir.actions.act_window',
+            'domain': [('id', 'in', res)],
+        }
