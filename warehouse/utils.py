@@ -10,7 +10,7 @@ def create_name(method):
     @functools.wraps(method)
     def func(self, vals):
         if vals.get('name', '/') == '/':
-            vals.update({'name': self.env['ir.sequence'].get(self._name) or '/'})
+            vals.update({'name': self.env['ir.sequence'].next_by_code(self._name) or '/'})
 
         return method(self, vals)
 
@@ -53,7 +53,8 @@ def inherits(res_back=True):
         def func(self, *args, **kwargs):
 
             res_after = method(self, *args, **kwargs)
-            res_before = execute_inherits_func(self, method.func_name, args, kwargs)
+            if not res_back or (not isinstance(res_after,dict) or (isinstance(res_after,dict) and not(res_after.get('res_model') and res_after.get('view_type')))):
+                res_before = execute_inherits_func(self, method.func_name, args, kwargs)
 
             if res_back:
                 return res_after

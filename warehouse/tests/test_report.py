@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
-from openerp.tests.common import TransactionCase
-from openerp.exceptions import except_orm
+from odoo.tests.common import TransactionCase
+from odoo.exceptions import UserError
 import operator
 
 
 class TestReport(TransactionCase):
     def setUp(self):
         super(TestReport, self).setUp()
+
+        self.env.ref('core.goods_category_1').account_id = self.env.ref('finance.account_goods').id
+        self.env.ref('warehouse.wh_in_whin0').date = '2016-02-06'
+        self.env.ref('warehouse.wh_in_whin3').date = '2016-02-06'
+        self.env.ref('warehouse.wh_in_whin1').date = '2016-02-06'
+        self.env.ref('warehouse.wh_in_wh_in_attribute').date = '2016-02-06'
 
         # 产品    仓库  批号         数量   类型
         # 键鼠套装 总仓              96    入库
@@ -17,10 +23,18 @@ class TestReport(TransactionCase):
         # 鼠标    总仓  ms160301    1     入库
         # 鼠标    总仓  ms160302    1     入库
         self.env['wh.in'].search([('name', '!=', 'WH/IN/16040004')]).approve_order()
+        # 先盘点产品，保证网线数量充足
+        warehouse_obj = self.env.ref('warehouse.wh_in_whin0')
+        warehouse_obj.approve_order()
+
         self.env['wh.internal'].search([]).approve_order()
 
-        self.track_wizard = self.env['report.lot.track.wizard'].create({})
-        self.transceive_wizard = self.env['report.stock.transceive.wizard'].create({})
+        self.track_wizard = self.env['report.lot.track.wizard'].create({
+                            'date_start': '2016-04-01',
+                            'date_end': '2016-04-03'})
+        self.transceive_wizard = self.env['report.stock.transceive.wizard'].create({
+                            'date_start': '2016-04-01',
+                            'date_end': '2016-04-03'})
 
     def test_report_base(self):
         report_base = self.env['report.base'].create({})
@@ -35,10 +49,10 @@ class TestReport(TransactionCase):
 
     def test_open_report(self):
         # 测试批号跟踪表的wizard
-        self.assertEqual(self.track_wizard.onchange_date()[0], {})
+        self.assertEqual(self.track_wizard.onchange_date(), {})
 
         self.track_wizard.date_end = '1999-09-09'
-        results = self.track_wizard.onchange_date()[0]
+        results = self.track_wizard.onchange_date()
         real_results = {'warning': {
             'title': u'错误',
             'message': u'结束日期不可以小于开始日期'
@@ -46,12 +60,14 @@ class TestReport(TransactionCase):
 
         self.assertEqual(results, real_results)
         self.assertEqual(self.track_wizard.open_report().get('res_model'), 'report.lot.track')
+        # 测试wizard默认日期
+        self.env['report.lot.track.wizard'].create({})
 
         # 测试商品收发明细表的wizard
-        self.assertEqual(self.transceive_wizard.onchange_date()[0], {})
+        self.assertEqual(self.transceive_wizard.onchange_date(), {})
 
         self.transceive_wizard.date_end = '1999-09-09'
-        results = self.transceive_wizard.onchange_date()[0]
+        results = self.transceive_wizard.onchange_date()
         real_results = {'warning': {
             'title': u'错误',
             'message': u'结束日期不可以小于开始日期'
@@ -59,9 +75,12 @@ class TestReport(TransactionCase):
 
         self.assertEqual(results, real_results)
         self.assertEqual(self.transceive_wizard.open_report().get('res_model'), 'report.stock.transceive')
+        # 测试wizard默认日期
+        self.env['report.stock.transceive.wizard'].create({})
 
     def test_lot_track_search_read(self):
         lot_track = self.env['report.lot.track'].create({})
+        self.track_wizard.date_start = '2016-02-01'
         context = self.track_wizard.open_report().get('context')
 
         real_results = [
@@ -102,22 +121,23 @@ class TestReport(TransactionCase):
             self.assertTrue(result in real_results)
 
         # domain条件中不是列表或元祖的
-        with self.assertRaises(except_orm):
+        with self.assertRaises(UserError):
             domain = ['domain']
             lot_track.with_context(context).search_read(domain=domain)
 
         # domain条件中长度不为3的
-        with self.assertRaises(except_orm):
+        with self.assertRaises(UserError):
             domain = [('goods', u'鼠标')]
             lot_track.with_context(context).search_read(domain=domain)
 
         # domain条件中使用不合法的操作符
-        with self.assertRaises(except_orm):
+        with self.assertRaises(UserError):
             domain = [('goods', 'lg', u'鼠标')]
             lot_track.with_context(context).search_read(domain=domain)
 
     def test_lot_track_read_group(self):
         lot_track = self.env['report.lot.track'].create({})
+        self.track_wizard.date_start = '2016-02-01'
         context = self.track_wizard.open_report().get('context')
 
         results = lot_track.with_context(context).read_group([], [], groupby=['goods'])
@@ -152,6 +172,7 @@ class TestReport(TransactionCase):
 
     def test_stock_transceive_search_read(self):
         stock_transceive = self.env['report.stock.transceive'].create({})
+        self.transceive_wizard.date_start = '2016-02-01'
         context = self.transceive_wizard.open_report().get('context')
 
         real_results = [
@@ -163,7 +184,12 @@ class TestReport(TransactionCase):
             (u'键鼠套装', u'总仓', 0, 96),
         ]
         results = stock_transceive.with_context(context).search_read(domain=[])
+        length = stock_transceive.with_context(context).search_count(domain=[])
         self.assertEqual(len(results), len(real_results))
+        self.assertEqual(len(results), length)
+
+        instance = stock_transceive.with_context(context).browse(results[0].get('id'))
+        self.assertEqual(instance.read(['warehouse'])[0].get('warehouse'), results[0].get('warehouse'))
 
         for result in results:
             result = (

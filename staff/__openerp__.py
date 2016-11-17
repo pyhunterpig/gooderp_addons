@@ -6,14 +6,15 @@
     'category': 'gooderp',
     "description": """
     """,
-    'version': '8.0.0.1',
-    'depends': ['base','province_city_county'],
+    'version': '11.11',
+    'depends': ['base','core'],
     'demo': [
              'tests/staff_demo.xml'
         ],
     'data': [
              'security/ir.model.access.csv',
+             'security/groups.xml',
              'staff.xml',
+             'mail_data.xml',
         ],
 }
-

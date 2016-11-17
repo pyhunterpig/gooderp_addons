@@ -1,36 +1,56 @@
 # -*- coding: utf-8 -*-
 
-from openerp import models, fields, api
-# from openerp.exceptions import except_orm
-# from datetime import datetime
-# import calendar
-
-ISODATEFORMAT = '%Y-%m-%d'
-ISODATETIMEFORMAT = "%Y-%m-%d %H:%M:%S"
-
+from odoo import models, fields, api
+from math import fabs
+import calendar
 
 class BalanceSheet(models.Model):
-    """资产负债表"""
+    """资产负债表模板
+    模板用来定义最终输出的 资产负债表的格式,
+     每行的 科目的顺序 科目的大分类的所属的子科目的顺序
+    -- 本模板适合中国会计使用.
+    """
 
     _name = "balance.sheet"
+    _order = "sequence,id"
+    sequence = fields.Integer(u'序号')
+    line = fields.Integer(u'序号', required=True, help=u'资产负债表的行次')
     balance = fields.Char(u'资产')
-    line_num = fields.Integer(u'行次')
+    line_num = fields.Char(u'行次', help=u'此处行次并不是出报表的实际的行数,只是显示用的用来符合国人习惯')
     ending_balance = fields.Float(u'期末余额')
-    balance_formula = fields.Text(u'计算公式')
-    balance_formula = fields.Text(u'年初余额计算公式')
+    balance_formula = fields.Text(u'科目范围', help=u'设定本行的资产负债表的科目范围!例如1001~1012999999 结束科目尽可能大一些方便以后扩展')
     beginning_balance = fields.Float(u'年初余额')
 
-    balance_two = fields.Char(u'资产')
-    line_num_two = fields.Integer(u'行次')
+    balance_two = fields.Char(u'负债和所有者权益')
+    line_num_two = fields.Char(u'行次', help=u'此处行次并不是出报表的实际的行数,只是显示用的用来符合国人习惯')
     ending_balance_two = fields.Float(u'期末余额')
-    balance_two_formula = fields.Text(u'计算公式')
-    beginning_balance_two = fields.Float(u'年初余额')
+    balance_two_formula = fields.Text(u'科目范围', help=u'设定本行的资产负债表的科目范围!例如1001~1012999999 结束科目尽可能大一些方便以后扩展')
+    beginning_balance_two = fields.Float(u'年初余额', help=u'报表行本年的年余额')
 
 
 class create_balance_sheet_wizard(models.TransientModel):
     """创建资产负债 和利润表的 wizard"""
     _name = "create.balance.sheet.wizard"
-    period_id = fields.Many2one('finance.period', string='会计期间')
+
+    @api.model
+    def _default_period_domain(self):
+        """
+        用来设定期间的 可选的范围(这个是一个范围)
+        :return: domain条件
+        """
+        period_domain_setting = self.env['ir.values'].get_default('finance.config.settings', 'default_period_domain')
+        return [('is_closed', '!=', False)] if period_domain_setting == 'cannot' else []
+
+    @api.model
+    def _default_period_id(self):
+        """
+        默认是当前会计期间
+        :return: 当前会计期间的对象
+        """
+        return self.env['finance.period'].get_date_now_period_id()
+
+    period_id = fields.Many2one('finance.period', string=u'会计期间', domain=_default_period_domain,
+                                default=_default_period_id, help=u'用来设定报表的期间')
 
     @api.multi
     def compute_balance(self, parameter_str, period_id, compute_field_list):
@@ -38,13 +58,17 @@ class create_balance_sheet_wizard(models.TransientModel):
         if parameter_str:
             parameter_str_list = parameter_str.split('~')
             subject_vals = []
-            subject_ids = self.env['finance.account'].search([('code', '>=', parameter_str_list[0]), ('code', '<=', parameter_str_list[1])])
+            if len(parameter_str_list) == 1:
+                subject_ids = self.env['finance.account'].search([('code', '=', parameter_str_list[0])])
+            else:
+                subject_ids = self.env['finance.account'].search([('code', '>=', parameter_str_list[0]), ('code', '<=', parameter_str_list[1])])
             trial_balances = self.env['trial.balance'].search([('subject_name_id', 'in', [subject.id for subject in subject_ids]), ('period_id', '=', period_id.id)])
             for trial_balance in trial_balances:
                 # 根据参数code 对应的科目的 方向 进行不同的操作
-                if trial_balance.subject_name_id.balance_directions == 'in':
+                #  trial_balance.subject_name_id.costs_types == 'assets'解决：累计折旧 余额记贷方
+                if trial_balance.subject_name_id.costs_types == 'assets':
                     subject_vals.append(trial_balance[compute_field_list[0]] - trial_balance[compute_field_list[1]])
-                elif trial_balance.subject_name_id.balance_directions == 'out':
+                elif trial_balance.subject_name_id.costs_types == 'debt' or trial_balance.subject_name_id.costs_types == 'equity':
                     subject_vals.append(trial_balance[compute_field_list[1]] - trial_balance[compute_field_list[0]])
             return sum(subject_vals)
 
@@ -62,21 +86,29 @@ class create_balance_sheet_wizard(models.TransientModel):
         year_begain_field = ['initial_balance_debit', 'initial_balance_credit']
         current_period_field = ['ending_balance_debit', 'ending_balance_credit']
         for balance_sheet_obj in balance_sheet_objs:
-            balance_sheet_obj.write({'beginning_balance': self.compute_balance(balance_sheet_obj.balance_formula, period, year_begain_field),
-                                     'ending_balance': self.compute_balance(balance_sheet_obj.balance_formula, self.period_id, current_period_field),
+            balance_sheet_obj.write({'beginning_balance': fabs(self.compute_balance(balance_sheet_obj.balance_formula, period, year_begain_field)),
+                                     'ending_balance': fabs(self.compute_balance(balance_sheet_obj.balance_formula, self.period_id, current_period_field)),
                                      'beginning_balance_two': self.compute_balance(balance_sheet_obj.balance_two_formula, period, year_begain_field),
                                      'ending_balance_two': self.compute_balance(balance_sheet_obj.balance_two_formula, self.period_id, current_period_field)})
+        force_company = self._context.get('force_company')
+        if not force_company:
+            force_company = self.env.user.company_id.id
+        company_row = self.env['res.company'].browse(force_company)
+        days = calendar.monthrange(int(self.period_id.year), int(self.period_id.month))[1]
+        attachment_information = u'编制单位：' + company_row.name + u',,,,' + self.period_id.year\
+                                 + u'年' + self.period_id.month + u'月' + str(days) + u'日' + u',,,' + u'单位：元'
         return {     # 返回生成资产负债表的数据的列表
             'type': 'ir.actions.act_window',
-            'name': '资产负债表',
+            'name': u'资产负债表',
             'view_type': 'form',
             'view_mode': 'tree',
             'res_model': 'balance.sheet',
             'target': 'current',
             'view_id': False,
             'views': [(view_id, 'tree')],
-            'context': {'period_id': self.period_id.id, 'attachment_information': self.period_id.name},
+            'context': {'period_id': self.period_id.id, 'attachment_information': attachment_information},
             'domain': [('id', 'in', [balance_sheet_obj.id for balance_sheet_obj in balance_sheet_objs])],
+            'limit': 65535,
         }
 
     @api.multi
@@ -91,17 +123,25 @@ class create_balance_sheet_wizard(models.TransientModel):
         for balance_sheet_obj in balance_sheet_objs:
             balance_sheet_obj.write({'cumulative_occurrence_balance': self.compute_profit(balance_sheet_obj.occurrence_balance_formula, self.period_id, year_begain_field),
                                      'current_occurrence_balance': self.compute_profit(balance_sheet_obj.occurrence_balance_formula, self.period_id, current_period_field)})
+        force_company = self._context.get('force_company')
+        if not force_company:
+            force_company = self.env.user.company_id.id
+        company_row = self.env['res.company'].browse(force_company)
+        days = calendar.monthrange(int(self.period_id.year), int(self.period_id.month))[1]
+        attachment_information = u'编制单位：' + company_row.name + u',,' + self.period_id.year\
+                                 + u'年' + self.period_id.month + u'月' + str(days) + u'日' + u',' + u'单位：元'
         return {      # 返回生成利润表的数据的列表
             'type': 'ir.actions.act_window',
-            'name': '利润表',
+            'name': u'利润表',
             'view_type': 'form',
             'view_mode': 'tree',
             'res_model': 'profit.statement',
             'target': 'current',
             'view_id': False,
             'views': [(view_id, 'tree')],
-            'context': {'period_id': self.period_id.id},
+            'context': {'period_id': self.period_id.id, 'attachment_information': attachment_information},
             'domain': [('id', 'in', [balance_sheet_obj.id for balance_sheet_obj in balance_sheet_objs])],
+            'limit': 65535,
         }
 
     @api.multi
@@ -109,22 +149,49 @@ class create_balance_sheet_wizard(models.TransientModel):
         """ 根据传进来的 的科目的code 进行利润表的计算 """
         if parameter_str:
             parameter_str_list = parameter_str.split('~')
-            subject_vals = []
-            subject_ids = self.env['finance.account'].search([('code', '>=', parameter_str_list[0]), ('code', '<=', parameter_str_list[1])])
+            subject_vals_in = []
+            subject_vals_out = []
+            total_sum = 0
+            sign_in = False
+            sign_out = False
+            if len(parameter_str_list) == 1:
+                subject_ids = self.env['finance.account'].search([('code', '=', parameter_str_list[0])])
+            else:
+                subject_ids = self.env['finance.account'].search([('code', '>=', parameter_str_list[0]), ('code', '<=', parameter_str_list[1])])
+            if subject_ids:   # 本行计算科目借贷方向
+                for line in subject_ids:
+                    if line.balance_directions == 'in':
+                        sign_in = True
+                    if line.balance_directions == 'out':
+                        sign_out = True
             trial_balances = self.env['trial.balance'].search([('subject_name_id', 'in', [subject.id for subject in subject_ids]), ('period_id', '=', period_id.id)])
             for trial_balance in trial_balances:
                 if trial_balance.subject_name_id.balance_directions == 'in':
-                    subject_vals.append(trial_balance[compute_field_list[0]])
+                    subject_vals_in.append(trial_balance[compute_field_list[0]])
                 elif trial_balance.subject_name_id.balance_directions == 'out':
-                    subject_vals.append(trial_balance[compute_field_list[1]])
-            return sum(subject_vals)
+                    subject_vals_out.append(trial_balance[compute_field_list[1]])
+                if sign_out and sign_in:    # 方向有借且有贷
+                    total_sum = sum(subject_vals_out)-sum(subject_vals_in)
+                else:
+                    if subject_vals_in:
+                        total_sum = sum(subject_vals_in)
+                    else:
+                        total_sum = sum(subject_vals_out)
+            return total_sum
 
 
 class ProfitStatement(models.Model):
-    """资产负债表"""
+    """利润表模板
+        模板主要用来定义项目的 科目范围,
+        然后根据科目的范围得到科目范围内的科目 的利润
+
+    """
     _name = "profit.statement"
-    balance = fields.Char(u'项目')
-    line_num = fields.Integer(u'行次')
-    cumulative_occurrence_balance = fields.Float(u'本年累计金额')
-    occurrence_balance_formula = fields.Text(u'金额计算参数')
-    current_occurrence_balance = fields.Float(u'本月累计金额')
+    _order = "sequence,id"
+    sequence = fields.Integer(u'序号')
+
+    balance = fields.Char(u'项目', help=u'报表的行次的总一个名称')
+    line_num = fields.Char(u'行次', help=u'生成报表的行次')
+    cumulative_occurrence_balance = fields.Float(u'本年累计金额', help=u'本年利润金额!')
+    occurrence_balance_formula = fields.Text(u'科目范围', help=u'设定本行的利润的科目范围!例如1001~1012999999 结束科目尽可能大一些方便以后扩展')
+    current_occurrence_balance = fields.Float(u'本月金额', help=u'本月的利润的金额!')

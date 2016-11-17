@@ -6,12 +6,17 @@
     'category': 'gooderp',
     "description": """
     """,
-    'version': '8.0.0.1',
-    'depends': ['core', 'mail', 'warehouse', 'money'],
+    'version': '11.11',
+    'depends': ['core', 'warehouse', 'money', 'finance'],
     'data': [
-        'buy_data.xml',
+        'data/buy_data.xml',
         'security/groups.xml',
-        'buy_view.xml',
+        'views/buy_order_view.xml',
+        'views/buy_receipt_view.xml',
+        'views/buy_adjust_view.xml',
+        'views/buy_action.xml',
+        'views/buy_menu.xml',
+        'views/vendor_goods_view.xml',
         'wizard/buy_order_track_wizard_view.xml',
         'wizard/buy_order_detail_wizard_view.xml',
         'wizard/buy_summary_goods_wizard_view.xml',
@@ -24,9 +29,11 @@
         'report/buy_summary_partner_view.xml',
         'report/buy_payment_view.xml',
         'report/supplier_statements_view.xml',
+        'report/report_data.xml',
         'security/ir.model.access.csv',
+        'data/home_page_data.xml'
         ],
     'demo': [
-             'buy_demo.xml',
+             'data/buy_demo.xml',
              ],
 }

@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
-import core
-import warehouse
+import models
+compare_digits = 3

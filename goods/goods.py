@@ -1,19 +1,24 @@
 # -*- coding: utf-8 -*-
 
-from openerp import models, fields, api
+from odoo import models, fields, api
 
 
 class goods(models.Model):
     _inherit = 'goods'
 
+    no_stock = fields.Boolean(u'虚拟商品')
     using_batch = fields.Boolean(u'批号管理')
     force_batch_one = fields.Boolean(u'每批号数量为1')
     attribute_ids = fields.One2many('attribute', 'goods_id', string=u'属性')
     image=fields.Binary(u'图片')
-    supplier_id = fields.Many2one('partner',u'供应商',domain="[('s_category_id','!=',False)]")
+    supplier_id = fields.Many2one('partner',u'供应商',domain=[('s_category_id','!=',False)])
     price = fields.Float(u'零售价')
+    barcode = fields.Char(u'条形码')
 
-    @api.one
+    _sql_constraints = [
+        ('barcode_uniq', 'unique(barcode)', u'条形码不能重复'),
+    ]
+
     @api.onchange('uom_id')
     def onchange_uom(self):
         self.uos_id = self.uom_id
@@ -40,7 +45,7 @@ class attribute(models.Model):
         '''在many2one字段中支持按条形码搜索'''
         args = args or []
         if name:
-            goods_ids = self.search([('ean', 'ilike', name)])
+            goods_ids = self.search([('ean', '=', name)])
             if goods_ids:
                 return goods_ids.name_get()
         return super(attribute, self).name_search(

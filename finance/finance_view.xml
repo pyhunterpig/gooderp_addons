@@ -37,30 +37,42 @@
                     <sheet>
                         <group>
                             <group>
-                                <field name="document_word_id" readonly='1' style="width: 1%%"/>
-                                <field name="name" readonly='1' style="width: 1%%"/>
+                                <field name="document_word_id" readonly='1' />
+                                <field name="name"  readonly='1'  style="width: 30%%"/>
                             </group>
                             <group>
                                 <field name="date"/>
-                                <field name="period_id"/>
+                                <field name="period_id"  options="{'no_open':True,'no_create':True}"/>
                                 <field name="att_count"/>
+                                <field name="is_init" invisible="1" />
                             </group>
                         </group>
-                        <field name="line_ids">
+                        <field name="line_ids" context="{'line_ids':line_ids}">
                             <tree editable='bottom'>
                                 <field name='name'/>
-                                <field name='account_id'/>
-                                <field name='partner_id'/>
-                                <field name='goods_id'/>
+                                <field name='account_id'  options="{'no_create': True}"/>
+                                <field name='partner_id' options="{'no_open': True, 'no_create': True}"/>
+                                <field name='goods_id' groups='finance.group_account_goods'/>
                                 <field name='auxiliary_id'/>
+                                <field name='currency_id'  options="{'no_create': True}"
+                                	 groups='finance.group_multi_currency'/>
+                                <field name='currency_amount'  sum='外币合计'
+                                	 groups='finance.group_multi_currency'/>
+                                <field name='rate_silent'
+                                	 groups='finance.group_multi_currency'/>
                                 <field name='debit' sum='借方合计'/>
                                 <field name='credit' sum='贷方合计'/>
+                                <field name='init_obj' invisible="1"/>
                             </tree>
                         </field>
                         <group>
                             <field name="amount_text" widget='num_to_china'/>
                         </group>
                     </sheet>
+                    <div class="oe_chatter">
+	                    <field name="message_follower_ids" widget="mail_followers"/>
+	                    <field name="message_ids" widget="mail_thread"/>
+	                </div>
                 </form>
             </field>
         </record>
@@ -68,13 +80,23 @@
             <field name="name">voucher.tree</field>
             <field name="model">voucher</field>
             <field name="arch" type="xml">
-                <tree string="会计凭证">
+                <tree string="会计凭证" colors="blue:state == 'draft';">
                     <field name="document_word_id"/>
                     <field name="date"/>
                     <field name="name"/>
                     <field name="att_count"/>
                     <field name="period_id"/>
                     <field name="amount_text"/>
+                    <field name="line_ids" widget="relation_sublist" options="{'field': 'name'}"
+                           groups = 'finance.view_detail' string='凭证摘要'/>
+                    <field name="line_ids" widget="relation_sublist" options="{'field': 'account_id'}"
+                           groups='finance.view_detail' string = '科目' />
+                    <field name="line_ids" widget="relation_sublist" options="{'field': 'debit'}"
+                           groups = 'finance.view_detail' string="借方"/>
+                    <field name="line_ids" widget="relation_sublist" options="{'field': 'credit'}"
+                           groups = 'finance.view_detail' string="贷方"/>
+                    <field name="state" invisible="1" />
+                    <field name="is_init" invisible="1" />
                 </tree>
             </field>
         </record>
@@ -123,15 +145,23 @@
             <field name="arch" type="xml">
                 <tree string='分录查询'  create="false" edit='false'>
                     <field name='voucher_id'/>
+                    <field name='period_id'/>
                     <field name='date'/>
                     <field name='name'/>
                     <field name='account_id'/>
                     <field name='partner_id'/>
                     <field name='goods_id'/>
+                    <field name='currency_id'
+                    	 groups='finance.group_multi_currency'/>
+                    <field name='currency_amount'  sum='外币合计'
+                    	 groups='finance.group_multi_currency'/>
+                    <field name='rate_silent'
+                    	 groups='finance.group_multi_currency'/>
                     <field name='auxiliary_id'/>
                     <field name='debit' sum='借方合计'/>
                     <field name='credit' sum='贷方合计'/>
                     <field name='state'/>
+                    <field name='init_obj' invisible="1"/>
                 </tree>
             </field>
         </record>
@@ -144,6 +174,30 @@
             <field name="view_mode">tree</field>
         </record>
 
-        <menuitem id='voucher_line_menu' action='voucher_line_action' parent='voucher_books_menu' sequence='10'/>
+        <menuitem id='voucher_line_menu' action='voucher_line_action' parent='voucher_books_menu' sequence='10' />
+
+        <record id="chang_voucher_name_tree" model="ir.ui.view">
+            <field name="name">chang.voucher.name.tree</field>
+            <field name="model">chang.voucher.name</field>
+            <field name="arch" type="xml">
+				<tree string='凭证变更记录' create='0'>
+                    <field name="period_id"/>
+                    <field name="before_voucher_name"/>
+                    <field name="after_voucher_name"/>
+                    <field name="write_date" string="变更日期"/>
+				</tree>
+			</field>
+        </record>
+
+        <record id="chang_voucher_name_action" model="ir.actions.act_window">
+            <field name="name">凭证变更记录</field>
+            <field name="res_model">chang.voucher.name</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree</field>
+        </record>
+
+        <menuitem id='chang_voucher_name_menu_finance' name="月末凭证变更记录"
+                  action='chang_voucher_name_action' parent='finance.checkout_menu' sequence='11'/>
     </data>
 </openerp>

@@ -21,14 +21,16 @@
 ##############################################################################
 {
     'name': 'GOODERP 销售模块',
-    'author': 'jeff@osbzr.com,jacky@osbzr.com',
+    'author': 'jeff@osbzr.com,flora@osbzr.com',
     'website': 'https://www.osbzr.com',
-    'description': '''gooderp销售实例，通过安装gooderp模块展示openerp的销售流程''',
-    'depends': ['mail', 'core', 'warehouse', 'money'],
+    'description': '''gooderp销售实例，通过安装gooderp模块展示odoo的销售流程''',
+    'category': 'gooderp',
+    'version': '11.11',
+    'depends': ['core', 'warehouse', 'money', 'partner_address'],
     'data': [
-            'sell_data.xml',
+            'data/sell_data.xml',
             'security/groups.xml',
-            'sell_view.xml',
+            'views/sell_view.xml',
             'report/customer_statements_view.xml',
             'report/sell_order_track_view.xml',
             'report/sell_order_detail_view.xml',
@@ -46,11 +48,12 @@
             'wizard/sell_receipt_wizard_view.xml',
             'wizard/sell_top_ten_wizard_view.xml',
             'security/ir.model.access.csv',
+            'report/report_data.xml',
+            'data/home_page_data.xml'
             ],
     'demo': [
-             'sell_demo.xml',
+             'data/sell_demo.xml',
              ],
     'installable': True,
     'auto_install': False,
-    'application': True,
 }

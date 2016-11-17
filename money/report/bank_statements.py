@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import openerp.addons.decimal_precision as dp
-from openerp import fields, models, api, tools
+import odoo.addons.decimal_precision as dp
+from odoo import fields, models, api, tools
 
 
 class bank_statements_report(models.Model):
@@ -16,29 +16,33 @@ class bank_statements_report(models.Model):
         # 相邻的两条记录，bank_id不同，重新计算账户余额
         pre_record = self.search([('id', '=', self.id - 1), ('bank_id', '=', self.bank_id.id)])
         if pre_record:
-            if pre_record.name != u'期初余额':
-                before_balance = pre_record.balance
+            if pre_record.name != '期初':
+                before_balance = pre_record.this_balance
             else:
                 before_balance = pre_record.get
         else:
             before_balance = 0
         self.balance += before_balance + self.get - self.pay
+        self.this_balance = self.balance
 
     bank_id = fields.Many2one('bank.account', string=u'账户名称', readonly=True)
     date = fields.Date(string=u'日期', readonly=True)
     name = fields.Char(string=u'单据编号', readonly=True)
     get = fields.Float(string=u'收入', readonly=True,
-                       digits_compute=dp.get_precision('Amount'))
+                       digits=dp.get_precision('Amount'))
     pay = fields.Float(string=u'支出', readonly=True,
-                       digits_compute=dp.get_precision('Amount'))
+                       digits=dp.get_precision('Amount'))
     balance = fields.Float(string=u'账户余额',
                            compute='_compute_balance', readonly=True,
-                           digits_compute=dp.get_precision('Amount'))
+                           digits=dp.get_precision('Amount'))
+    this_balance = fields.Float(string=u'账户余额',
+                                digits=dp.get_precision('Amount'))
     partner_id = fields.Many2one('partner', string=u'往来单位', readonly=True)
     note = fields.Char(string=u'备注', readonly=True)
 
-    def init(self, cr):
+    def init(self):
         # union money_order, other_money_order, money_transfer_order
+        cr = self._cr
         tools.drop_view_if_exists(cr, 'bank_statements_report')
         cr.execute("""
             CREATE or REPLACE VIEW bank_statements_report AS (
@@ -49,19 +53,11 @@ class bank_statements_report(models.Model):
                     get,
                     pay,
                     balance,
+                    0 AS this_balance,
                     partner_id,
                     note
             FROM
-                (SELECT go.bank_id AS bank_id,
-                        go.date AS date,
-                        '期初余额' AS name,
-                        go.balance AS get,
-                        0 AS pay,
-                        0 AS balance,
-                        NULL AS partner_id,
-                        NULL AS note
-                FROM go_live_order AS go
-                UNION ALL
+                (
                 SELECT mol.bank_id,
                         mo.date,
                         mo.name,
@@ -81,7 +77,7 @@ class bank_statements_report(models.Model):
                         (CASE WHEN omo.type = 'other_pay' THEN omo.total_amount ELSE 0 END) AS pay,
                         0 AS balance,
                         omo.partner_id,
-                        NULL AS note
+                        omo.note AS note
                 FROM other_money_order AS omo
                 WHERE omo.state = 'done'
                 UNION ALL
@@ -113,7 +109,7 @@ class bank_statements_report(models.Model):
 
     @api.multi
     def find_source_order(self):
-        # 查看源单，三种情况：收付款单、其他收支单、资金转换单
+        # 查看原始单据，三种情况：收付款单、其他收支单、资金转换单
         money = self.env['money.order'].search([('name', '=', self.name)])
         other_money = self.env['other.money.order'].search([('name', '=', self.name)])
 

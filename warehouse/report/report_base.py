@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from openerp.osv import osv
-from openerp.http import request
+from odoo.osv import osv
+from odoo.http import request
 import itertools
 import operator
 import time
 import pickle
-from openerp import models, api
-
+from odoo import models, api
+from odoo.exceptions import UserError
 
 class report_base(models.Model):
     _name = 'report.base'
@@ -37,9 +37,14 @@ class report_base(models.Model):
         return {}
 
     def execute_sql(self, sql_type='out'):
+        context = self.get_context(sql_type, context=self.env.context)
+        for key, value in context.iteritems():
+            if isinstance(context[key], basestring):
+                context[key] = value.encode('utf-8')
+
         self.env.cr.execute((self.select_sql(sql_type) + self.from_sql(sql_type) + self.where_sql(
             sql_type) + self.group_sql(sql_type) + self.order_sql(
-            sql_type)).format(**self.get_context(sql_type, context=self.env.context)))
+            sql_type)).format(**context))
 
         return self.env.cr.dictfetchall()
 
@@ -48,7 +53,7 @@ class report_base(models.Model):
 
     def check_valid_domain(self, domain):
         if not isinstance(domain, (list, tuple)):
-            raise osv.except_osv(u'错误', u'不可识别的domain条件，请检查domain"%s"是否正确' % str(domain))
+            raise UserError(u'不可识别的domain条件，请检查domain"%s"是否正确' % str(domain))
 
     def _get_next_domain(self, domains, index):
         domain = domains[index]
@@ -70,10 +75,10 @@ class report_base(models.Model):
             field, opto, value = domain
 
             compute_operator = {
-                'ilike': lambda field, value: str(value).lower() in str(field).lower(),
-                'like': lambda field, value: str(value) in str(field),
-                'not ilike': lambda field, value: str(value).lower() not in str(field).lower(),
-                'not like': lambda field, value: str(value) not in str(field),
+                'ilike': lambda field, value: unicode(value).lower() in unicode(field).lower(),
+                'like': lambda field, value: unicode(value) in unicode(field),
+                'not ilike': lambda field, value: unicode(value).lower() not in unicode(field).lower(),
+                'not like': lambda field, value: unicode(value) not in unicode(field),
                 'in': lambda field, value: field in value,
                 'not in': lambda field, value: field not in value,
                 '=': operator.eq,
@@ -89,9 +94,9 @@ class report_base(models.Model):
                 if opto in compute_operator.iterkeys():
                     return compute_operator.get(opto)(result.get(field), value)
 
-                raise osv.except_osv(u'错误', u'暂时无法解析的domain条件%s，请联系管理员' % str(domain))
+                raise UserError(u'暂时无法解析的domain条件%s，请联系管理员' % str(domain))
 
-        raise osv.except_osv(u'错误', u'不可识别的domain条件，请检查domain"%s"是否正确' % str(domain))
+        raise UserError(u'不可识别的domain条件，请检查domain"%s"是否正确' % str(domain))
 
     def _compute_domain_util(self, result, domains):
         index = 0
@@ -189,5 +194,25 @@ class report_base(models.Model):
         result = self._compute_limit_and_offset(result, limit, offset)
 
         return result
+
+    @api.model
+    def search_count(self, domain):
+        result = self.get_data_from_cache(sql_type='out')
+        result = self._compute_domain(result, domain)
+
+        return len(result)
+
+    @api.multi
+    def read(self, fields=None, context=None, load='_classic_read'):
+        res = []
+        fields = fields or []
+
+        fields.append('id')
+        for record in self.get_data_from_cache():
+            if record.get('id') in self.ids:
+                res.append({field: record.get(field) for field in fields})
+
+        return res
+
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

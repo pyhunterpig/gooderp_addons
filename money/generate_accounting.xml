@@ -7,24 +7,51 @@
             <field name='inherit_id' ref='core.core_category_tree' />
             <field name="arch" type="xml">
                 <field name="name" position="after">
-					<field name="account_id"/>
+					<field name="account_id" attrs="{'required': [('type', '!=', 'attribute')]}"/>
+				</field>
+            </field>
+        </record>
+        <record id="core_category_form_inherit" model="ir.ui.view">
+            <field name="name">core.category.form.inherit</field>
+            <field name="model">core.category</field>
+            <field name='inherit_id' ref='core.core_category_form' />
+            <field name="arch" type="xml">
+                <field name="type" position="after">
+					<field name="account_id" attrs="{'required': [('type', '!=', 'attribute')]}"/>
 				</field>
             </field>
         </record>
 
        	<record id="bank_account_tree_inherit" model="ir.ui.view">
-            <field name="name">bank_account_tree</field>
+            <field name="name">bank.account.tree.inherit</field>
             <field name="model">bank.account</field>
             <field name='inherit_id' ref='core.bank_account_tree' />
             <field name="arch" type="xml">
                 <field name="name" position="after">
 					<field name="account_id"/>
+                    <field name="currency_id"
+                    	 groups='finance.group_multi_currency'/>
+                    <field name="currency_amount"
+                    	 groups='finance.group_multi_currency'/>
+				</field>
+            </field>
+        </record>
+        <record id="bank_account_search_inherit" model="ir.ui.view">
+            <field name="name">bank.account.search.inherit</field>
+            <field name="model">bank.account</field>
+            <field name='inherit_id' ref='core.bank_account_search' />
+            <field name="arch" type="xml">
+                <field name="name" position="after">
+					<field name="account_id"/>
+					<group expand="0" string="分组">
+                        <filter string="科目" domain="[]" context="{'group_by':'account_id'}"/>
+                    </group>
 				</field>
             </field>
         </record>
 
         <record id="money_order_form_inherit" model="ir.ui.view">
-            <field name="name">bank_account_tree</field>
+            <field name="name">money.order.form.inherit</field>
             <field name="model">money.order</field>
             <field name='inherit_id' ref='money.money_order_form' />
             <field name="arch" type="xml">
@@ -50,7 +77,7 @@
             <field name="model">other.money.order</field>
             <field name='inherit_id' ref='money.other_money_order_form' />
             <field name="arch" type="xml">
-                <field name="partner_id" position="after">
+                <field name="date" position="after">
                     <field name="voucher_id"/>
                 </field>
             </field>

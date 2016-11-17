@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from openerp.tests.common import TransactionCase
-from openerp.exceptions import except_orm
+from odoo.tests.common import TransactionCase
+from odoo.exceptions import UserError
 
 
 class TestMoveLine(TransactionCase):
@@ -21,6 +21,8 @@ class TestMoveLine(TransactionCase):
 
         self.goods_mouse = self.browse_ref('goods.mouse')
         self.goods_cable = self.browse_ref('goods.cable')
+
+        self.assembly = self.browse_ref('warehouse.wh_assembly_ass0')
 
     def test_origin_explain(self):
         explain = self.mouse_in_line.get_origin_explain()
@@ -48,39 +50,33 @@ class TestMoveLine(TransactionCase):
 
     def test_name_get(self):
         line = self.mouse_in_line
-        name = line.name_get()
+        name = line.with_context({'match': 1}).name_get()
         real_name = '%s-%s->%s(%s, %s%s)' % (line.move_id.name, line.warehouse_id.name,
                                              line.warehouse_dest_id.name, line.goods_id.name,
                                              str(line.goods_qty), line.uom_id.name)
         self.assertEqual(name[0][1], real_name)
 
-        lot_name = line.with_context({'lot': True}).name_get()
-        real_lot_name = '%s-%s-%s' % (line.lot, line.warehouse_dest_id.name, line.qty_remaining)
+        lot_name = line.name_get()
+        real_lot_name = line.lot
         self.assertEqual(lot_name[0][1], real_lot_name)
 
     def test_copy_data(self):
         # 复制的时候，如果该明细行是出库行为，那么需要重新计算成本
-        results = self.mouse_out_line.copy_data()
-        _, cost_unit = self.mouse_out_line.goods_id.get_suggested_cost_by_warehouse(
-            self.mouse_out_line.warehouse_id, self.mouse_out_line.goods_qty)
-
-        self.assertEqual(results.get('cost_unit'), cost_unit)
-
         _, cost_unit = self.mouse_out_line.goods_id.get_suggested_cost_by_warehouse(
             self.mouse_out_line.warehouse_id, self.mouse_out_line.goods_qty,
             lot_id=self.mouse_out_line.lot_id)
 
         self.assertEqual(cost_unit, self.mouse_out_line.lot_id.cost_unit)
-
-
+        
+       
     def test_get_matching_records_by_lot(self):
         # 批次号未审核的时候获取批次信息会报错
-        with self.assertRaises(except_orm):
+        with self.assertRaises(UserError):
             self.mouse_out_line.goods_id.get_matching_records_by_lot(
                 self.mouse_out_line.lot_id, self.mouse_out_line.goods_qty)
 
         # 批次号不存在的时候应该报错
-        with self.assertRaises(except_orm):
+        with self.assertRaises(UserError):
             self.mouse_out_line.goods_id.get_matching_records_by_lot(False, 0)
 
         self.mouse_out_line.lot_id.action_done()
@@ -97,12 +93,15 @@ class TestMoveLine(TransactionCase):
         self.assertEqual(results[0], real_results)
 
         # 当前明细行的产品数量大于批次的数量的时候，会报错
-        with self.assertRaises(except_orm):
+        with self.assertRaises(UserError):
             self.mouse_out_line.goods_id.get_matching_records_by_lot(
                 self.mouse_out_line.lot_id,
                 self.mouse_out_line.lot_id.qty_remaining + 10)
 
     def test_attribute(self):
+        self.env.ref('core.goods_category_1').account_id = self.env.ref('finance.account_goods').id
+        self.env.ref('warehouse.wh_in_wh_in_attribute').date = '2016-02-06'
+
         attribute_in = self.browse_ref('warehouse.wh_in_wh_in_attribute')
 
         white_iphone = self.browse_ref('warehouse.wh_move_line_iphone_in_1')
@@ -205,9 +204,23 @@ class TestMoveLine(TransactionCase):
         self.assertEqual(self.mouse_in_line.discount_amount,
                          self.mouse_in_line.goods_qty * self.mouse_in_line.price)
 
-        with self.assertRaises(except_orm):
+        with self.assertRaises(UserError):
             self.mouse_in_line.unlink()
 
         self.mouse_in_line.warehouse_id = self.mouse_in_line.warehouse_dest_id
-        with self.assertRaises(except_orm):
+        with self.assertRaises(UserError):
             self.mouse_in_line.check_availability()
+
+    def test_name_search(self):
+        '''测试批号下拉的时候显示批次和剩余数量'''
+        move_line = self.env.ref('warehouse.wh_move_line_12')
+        result = self.env['wh.move.line'].name_search('ms160301')
+        real_result = [(move_line.id, move_line.lot + ' ' + move_line.warehouse_dest_id.name + u' 余 ' + str(move_line.goods_qty))]
+        self.assertEqual(result, real_result)
+
+    def test_compute_all_amount_wrong_tax_rate(self):
+        '''明细行上输入错误税率，应报错'''
+        with self.assertRaises(UserError):
+            self.mouse_in_line.tax_rate = -1
+        with self.assertRaises(UserError):
+            self.mouse_in_line.tax_rate = 102

@@ -1,19 +1,12 @@
 <?xml version="1.0"?>
 <openerp>
     <data>
-        <template id="assets_backend" name="petstore_assets" inherit_id="web.assets_backend">
-            <xpath expr="." position="inside">
-                <script type="text/javascript" src="/finance/static/src/js/balance_sheet.js"/>
-            </xpath>
-        </template>
-
-
         <record id="profit_statement_tree" model="ir.ui.view">
             <field name="name">profit_statement_tree</field>
             <field name="model">profit.statement</field>
             <field name="arch" type="xml">
                 <tree string='利润表' create='false' edit='false' >
-                    <field name="balance"/>
+                    <field name="balance" />
                     <field name="line_num"/>
                     <field name="cumulative_occurrence_balance"/>
                     <field name="current_occurrence_balance"/>
@@ -25,6 +18,7 @@
             <field name="model">profit.statement</field>
             <field name="arch" type="xml">
                 <tree string='利润表模板' editable="bottom" >
+                    <field name="sequence" widget="handle"/>
                     <field name="balance"/>
                     <field name="line_num"/>
                     <field name="occurrence_balance_formula" />
@@ -48,6 +42,7 @@
             <field name="model">balance.sheet</field>
             <field name="arch" type="xml">
                 <tree string="资产负债表模板" editable="bottom" >
+                    <field name="sequence" widget="handle"/>
                     <field name="balance"/>
                     <field name="line_num"/>
                     <field name="balance_formula"/>
@@ -67,7 +62,7 @@
                     <field name="beginning_balance"/>
                     <field name="ending_balance"/>
                     <field name="balance_two" />
-                     <field name="line_num_two"/>
+                    <field name="line_num_two"/>
                     <field name="beginning_balance_two"  />
                     <field name="ending_balance_two"  />
                 </tree>
@@ -88,14 +83,15 @@
                 <form>
                     <group>
                         <group>
-                            <field name="period_id" options="{'no_open':True,'no_create':True}" required="True"/>
+                            <field name="period_id" options="{'no_open':True,'no_create':True}" required="True" style="width: 60%%"/>
                         </group>
                     </group>
-
-                    <button name="create_balance_sheet" invisible="context.get('profit_statement')"  string="科目余额表" type="object" class="oe_highlight"/>
-                    <button name="create_profit_statement" invisible="context.get('balance_sheet')"  string="利润表" type="object" class="oe_highlight"/>
-                    或者 
-                    <button string="取消" class="oe_link" special="cancel"/>
+                    <footer>
+                        <button name="create_balance_sheet" invisible="context.get('profit_statement')"  string="资产负债表" type="object" class="oe_highlight"/>
+                        <button name="create_profit_statement" invisible="context.get('balance_sheet')"  string="利润表" type="object" class="oe_highlight"/>
+                        或者
+                        <button string="取消" class="oe_link" special="cancel"/>
+                    </footer>
                 </form>
             </field>
         </record>
@@ -118,7 +114,7 @@
             context="{'profit_statement':True}"
             />
          <menuitem id='profit_statement_tree_wizard_action_menu' action='profit_statement_tree_wizard_action' parent='voucher_books_menu' sequence='30'/>
-        <menuitem id='create_balance_sheet_wizard_menu' action='create_balance_sheet_wizard_action' parent='voucher_books_menu' sequence='20'/>
+        <menuitem id='create_balance_sheet_wizard_menu' action='create_balance_sheet_wizard_action' parent='voucher_books_menu' sequence='25'/>
          <menuitem id='balance_sheet_menu' action='balance_sheet_action' parent='finance_setting_menu' sequence='30'/>
     </data>
 </openerp>

@@ -2,7 +2,7 @@
 ##############################################################################
 #
 #    OpenERP, Open Source Management Solution
-#    Copyright (C) 2013-Today OpenERP SA (<http://www.openerp.com>).
+#    Copyright (C) 2013-Today OpenERP SA (<http://www.odoo.com>).
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as
@@ -21,11 +21,11 @@
 
 {
     "name": "GOODERP Warehouse Management",
-    "version": "0.1",
+    "version": '11.11',
     "author": 'ZhengXiang',
     "website": "http://www.osbzr.com",
     "category": "Generic Modules",
-    "depends": ['core', 'goods', 'mobile', 'decimal_precision', 'web_sublist', 'web_float_limit', 'web_readonly_bypass'],
+    "depends": ['core', 'goods', 'decimal_precision', 'web_sublist', 'web_float_limit', 'report_docx','finance'],
     "description": """
     """,
     "data": [
@@ -34,11 +34,12 @@
         'wizard/save_bom_view.xml',
         'wizard/stock_transceive_wizard_view.xml',
         'wizard/lot_track_wizard_view.xml',
+        'wizard/non_active_report_wizard.xml',
         'view/assets_backend.xml',
         'view/warehouse_view.xml',
         'view/inventory_view.xml',
         'view/production_view.xml',
-        'view/goods_view.xml',
+        'report/report_data.xml',
         'report/stock_balance_view.xml',
         'report/stock_transceive_view.xml',
         'report/lot_status_view.xml',
@@ -47,13 +48,11 @@
         'menu/warehouse_menu.xml',
         'data/sequence.xml',
         'security/ir.model.access.csv',
+        'data/home_page_data.xml'
     ],
     'demo': [
         'data/warehouse_demo.xml',
      ],
-     'qweb': [
-        'data/copy_move_line.xml',
-    ],
     'installable': True,
     "active": False,
 }

@@ -6,8 +6,8 @@
     'category': 'gooderp',
     "description": """
     """,
-    'version': '8.0.0.1',
-    'depends': ['core', 'base', 'finance'],
+    'version': '11.11',
+    'depends': ['core', 'base', 'finance', 'report_docx'],
     'data': [
         'data/money_data.xml',
         'security/groups.xml',
@@ -22,9 +22,10 @@
         'report/other_money_statements_view.xml',
         'wizard/other_money_statements_wizard_view.xml',
         'security/ir.model.access.csv',
-        'view/go_live_order_view.xml',
         'view/partner_view.xml',
-        'generate_accounting.xml'
+        'generate_accounting.xml',
+        'home_page_data.xml',
+        'report/report_data.xml',
     ],
     'demo': [
         'money_demo.xml',

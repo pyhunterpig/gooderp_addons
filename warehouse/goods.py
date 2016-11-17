@@ -1,21 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from openerp.osv import osv
 from utils import safe_division
-
-from openerp import models, fields, api
-
+from odoo.exceptions import UserError
+from odoo import models, fields, api
 
 class goods(models.Model):
     _inherit = 'goods'
-
-    @api.model
-    def _get_default_wh(self):
-        return self.env.ref('core.warehouse_general')
-
-    default_wh = fields.Many2one('warehouse', u'默认库位',
-                                 required=True, ondelete='restrict',
-                                 default=_get_default_wh)
 
     # 使用SQL来取得指定产品情况下的库存数量
     def get_stock_qty(self):
@@ -55,7 +45,7 @@ class goods(models.Model):
 
                 domain.append(('id', 'not in', ignore))
 
-            move = self.env['wh.move.line'].search(domain, limit=1, order='date desc, id desc')
+            move = self.env['wh.move.line'].search(domain, limit=1, order='cost_time desc, id desc')
             if move:
                 return move.cost_unit
 
@@ -81,6 +71,8 @@ class goods(models.Model):
         return cost_unit * qty, cost_unit
 
     def is_using_matching(self):
+        if self.no_stock:
+            return False
         return True
 
     def is_using_batch(self):
@@ -90,13 +82,13 @@ class goods(models.Model):
     def get_matching_records_by_lot(self, lot_id, qty, uos_qty=0, suggested=False):
         self.ensure_one()
         if not lot_id:
-            raise osv.except_osv(u'错误', u'批号没有被指定，无法获得成本')
+            raise UserError(u'批号没有被指定，无法获得成本')
 
         if not suggested and lot_id.state != 'done':
-            raise osv.except_osv(u'错误', u'批号%s还没有实际入库，请先审核该入库' % lot_id.move_id.name)
+            raise UserError(u'批号%s还没有实际入库，请先审核该入库' % lot_id.move_id.name)
 
-        if qty > lot_id.qty_remaining:
-            raise osv.except_osv(u'错误', u'产品%s的库存数量不够本次出库行为' % (self.name,))
+        if qty > lot_id.qty_remaining and not self.env.context.get('wh_in_line_ids'):
+            raise UserError(u'产品%s的库存数量不够本次出库行为' % (self.name,))
 
         return [{'line_in_id': lot_id.id, 'qty': qty, 'uos_qty': uos_qty}], \
             lot_id.get_real_cost_unit() * qty
@@ -123,7 +115,7 @@ class goods(models.Model):
                 domain.append(('attribute_id', '=', attribute.id))
 
             # TODO @zzx需要在大量数据的情况下评估一下速度
-            lines = self.env['wh.move.line'].search(domain, order='date, id')
+            lines = self.env['wh.move.line'].search(domain, order='cost_time, id')
 
             qty_to_go, uos_qty_to_go, cost = qty, uos_qty, 0
             for line in lines:
@@ -141,7 +133,10 @@ class goods(models.Model):
                 qty_to_go -= matching_qty
                 uos_qty_to_go -= matching_uos_qty
             else:
-                if not ignore_stock and qty_to_go > 0:
-                    raise osv.except_osv(u'错误', u'产品%s的库存数量不够本次出库行为' % (goods.name,))
+                if not ignore_stock and qty_to_go > 0 and not self.env.context.get('wh_in_line_ids'):
+                    raise UserError(u'产品%s的库存数量不够本次出库行为' % (goods.name,))
+                if self.env.context.get('wh_in_line_ids'):
+                    matching_records.append({'line_in_id': self.env.context.get('wh_in_line_ids')[0],
+                                         'qty': qty_to_go, 'uos_qty': uos_qty_to_go})
 
             return matching_records, cost

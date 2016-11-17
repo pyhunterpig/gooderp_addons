@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from datetime import date, timedelta
-from openerp import models, fields, api
+from odoo import models, fields, api
 
 
 class report_stock_transceive_wizard(models.TransientModel):
@@ -19,12 +19,15 @@ class report_stock_transceive_wizard(models.TransientModel):
 
         return (next_month - timedelta(days=1)).strftime('%Y-%m-%d')
 
-    date_start = fields.Date(u'开始日期', default=_default_date_start)
-    date_end = fields.Date(u'结束日期', default=_default_date_end)
-    warehouse = fields.Char(u'仓库')
-    goods = fields.Char(u'产品')
+    date_start = fields.Date(u'开始日期', default=_default_date_start,
+                             help=u'查看本次报表的开始日期')
+    date_end = fields.Date(u'结束日期', default=_default_date_end,
+                           help=u'查看本次报表的结束日期')
+    warehouse = fields.Char(u'仓库',
+                            help=u'本次报表查看的仓库')
+    goods = fields.Char(u'产品',
+                        help=u'本次报表查看的产品')
 
-    @api.one
     @api.onchange('date_start', 'date_end')
     def onchange_date(self):
         if self.date_start and self.date_end and self.date_end < self.date_start:
@@ -41,6 +44,7 @@ class report_stock_transceive_wizard(models.TransientModel):
             'type': 'ir.actions.act_window',
             'res_model': 'report.stock.transceive',
             'view_mode': 'tree',
-            'name': u'商品收发明细表',
+            'name': u'商品收发明细表 %s 至  %s ' % (self.date_start, self.date_end),
             'context': self.read(['date_start', 'date_end', 'warehouse', 'goods'])[0],
+            'limit': 65535,
         }
