@@ -32,7 +32,7 @@ class staff_employee_category(models.Model):
     _name = "staff.employee.category"
 
     name = fields.Char(u'名称')
-    parent_id = fields.Many2one('staff.employee.category', u'上级标签', select=True)
+    parent_id = fields.Many2one('staff.employee.category', u'上级标签', index=True)
     chield_ids = fields.One2many('staff.employee.category', 'parent_id', u'下级标签')
     employee_ids = fields.Many2many('staff',
                                     'employee_category_rel',
@@ -59,7 +59,7 @@ class staff(models.Model):
     auxiliary_id = fields.Many2one(
         string=u'辅助核算',
         comodel_name='auxiliary.financing',
-        ondelete='cascade',
+        ondelete='restrict',
         required=True,
     )
     category_ids = fields.Many2many('staff.employee.category',

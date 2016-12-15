@@ -22,7 +22,7 @@ class stock_request(models.Model):
     date = fields.Date(u'日期', default=lambda self: fields.Date.context_today(self))
     staff_id = fields.Many2one('staff',
                                u'经办人',
-                               default=lambda self: self.env.user.staff_id)
+                               default=lambda self: self.env.user.employee_ids and self.env.user.employee_ids[0])
     line_ids = fields.One2many('stock.request.line', 'request_id', u'补货申请行')
     state = fields.Selection(STOCK_REQUEST_STATES, u'审核状态', readonly=True,
                              help=u"补货申请的审核状态", copy=False,
@@ -160,7 +160,7 @@ class stock_request(models.Model):
         price_taxed = line.goods_id.cost
         for vendor_price in line.goods_id.vendor_ids:
             if vendor_price.vendor_id == buy_order.partner_id \
-                and line.quantity >= vendor_price.min_qty:
+                and line.request_qty >= vendor_price.min_qty:
                 price_taxed = vendor_price.price
                 break
 
@@ -250,7 +250,7 @@ class stock_request(models.Model):
                 buy_order = buy_order[0]
             else:
                 # 创建新的购货订单
-                buy_order = self.env['buy.order'].create({
+                buy_order = self.env['buy.order'].with_context(warehouse_dest_type='stock').create({
                                                           'partner_id': line.supplier_id.id
                                                           })
             # 找相同的采购单行

@@ -103,10 +103,10 @@ class sell_delivery(models.Model):
                                     help=u'销售费用明细行')
     money_state = fields.Char(u'收款状态', compute=_get_sell_money_state,
                               store=True, default=u'未收款',
-                              help=u"销售发货单的收款状态", select=True, copy=False)
+                              help=u"销售发货单的收款状态", index=True, copy=False)
     return_state = fields.Char(u'退款状态', compute=_get_sell_money_state,
                                store=True, default=u'未退款',
-                               help=u"销售退货单的退款状态", select=True, copy=False)
+                               help=u"销售退货单的退款状态", index=True, copy=False)
     contact = fields.Char(u'联系人', states=READONLY_STATES,
                           help=u'客户方的联系人')
     address = fields.Char(u'地址', states=READONLY_STATES,
@@ -241,7 +241,7 @@ class sell_delivery(models.Model):
             for line in self.cost_line_ids:
                 if not float_is_zero(line.amount,2):
                     invoice_id = self.env['money.invoice'].create(
-                        self._get_invoice_vals(line.partner_id, line.category_id, self.date, line.amount, 0)
+                        self._get_invoice_vals(line.partner_id, line.category_id, self.date, line.amount + line.tax, line.tax)
                     )
         return invoice_id
 
@@ -296,7 +296,7 @@ class sell_delivery(models.Model):
             # 生成收款单，并审核
             if record.receipt:
                 flag = not record.is_return and 1 or -1
-                amount = flag * record.amount
+                amount = flag * (record.amount + record.partner_cost)
                 this_reconcile = flag * record.receipt
                 money_order = record._make_money_order(invoice_id, amount, this_reconcile)
                 money_order.money_order_done()

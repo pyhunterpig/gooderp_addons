@@ -67,6 +67,7 @@ class buy_receipt(models.Model):
                                  ondelete='set null',
                                  help=u'产生的发票号')
     date_due = fields.Date(u'到期日期', copy=False,
+                           default=lambda self: fields.Date.context_today(self),
                            help=u'付款截止日期')
     discount_rate = fields.Float(u'优惠率(%)', states=READONLY_STATES,
                                  help=u'整单优惠率')
@@ -94,11 +95,11 @@ class buy_receipt(models.Model):
     money_state = fields.Char(u'付款状态', compute=_get_buy_money_state,
                               store=True, default=u'未付款',
                               help=u"采购入库单的付款状态",
-                              select=True, copy=False)
+                              index=True, copy=False)
     return_state = fields.Char(u'退款状态', compute=_get_buy_money_state,
                                store=True, default=u'未退款',
                                help=u"采购退货单的退款状态",
-                               select=True, copy=False)
+                               index=True, copy=False)
     modifying = fields.Boolean(u'差错修改中', default=False,
                                help=u'是否处于差错修改中')
     voucher_id = fields.Many2one('voucher', u'入库凭证', readonly=True,
@@ -234,7 +235,7 @@ class buy_receipt(models.Model):
             for line in self.cost_line_ids:
                 if not float_is_zero(line.amount,2):
                     self.env['money.invoice'].create(
-                        self._get_invoice_vals(line.partner_id, line.category_id,self.date, line.amount, 0)
+                        self._get_invoice_vals(line.partner_id, line.category_id, self.date, line.amount + line.tax, line.tax)
                     )
         return
 

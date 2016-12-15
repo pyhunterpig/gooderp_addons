@@ -192,9 +192,8 @@ class test_report(TransactionCase):
 
     def test_balance_sheet(self):
         ''' 测试资产负债表 '''
-        report = self.env['create.balance.sheet.wizard'].create(
-            {'period_id': self.period_id}
-                    )
+        report = self.env['create.balance.sheet.wizard'].create({'period_id': self.period_id})
+
         with self.assertRaises(UserError):
             report.create_balance_sheet()
         with self.assertRaises(UserError):
@@ -212,6 +211,21 @@ class test_report(TransactionCase):
         for balance_sheet_obj in balance_sheet_objs:
             balance_sheet_obj.cumulative_occurrence_balance_formula = ''
         report.create_profit_statement()
+
+    def test_balance_sheet_default_period(self):
+        ''' 测试资产负债表  wizard no period'''
+        self.env['create.balance.sheet.wizard'].create({})
+
+    def test_balance_sheet_compute_balance(self):
+        ''' 测试资产负债表  compute balance'''
+        report = self.env['create.balance.sheet.wizard'].create({'period_id': self.period_id})
+        self.env.ref('finance.bs_1').balance_formula = '1001'
+        # 结转2015年12月的期间
+        month_end = self.env['checkout.wizard'].create({'date':'2015-12-31'})
+
+        month_end.onchange_period_id()
+        month_end.button_checkout()
+        report.create_balance_sheet()
 
 
 class test_checkout_wizard(TransactionCase):
@@ -313,3 +327,23 @@ class test_action_report_picking_wrapped(TransactionCase):
         arpw._rmb_format(1000)
         arpw._rmb_format(0.001)
         arpw._paginate([190,2092,34934,5405])
+
+class test_report_auxiliary_accounting(TransactionCase):
+    ''' 测试 辅助核算余额表 '''
+    def setUp(self):
+        super(test_report_auxiliary_accounting, self).setUp()
+        self.voucher_15_12 = self.env.ref('finance.voucher_12')
+        self.checkout_voucher = self.env.ref('finance.voucher_12_1')
+        self.period_15_12 = self.env.ref('finance.period_201512')
+
+    def test_view_voucher_line_detail(self):
+        ''' 测试 辅助核算余额表 查看明细 按钮 '''
+        # 创建 辅助核算项目
+        auxiliary_id = self.env['auxiliary.financing'].create({
+                                                'name': 'gooderp project',
+                                                'code': '20160001',
+                                                'type': 'project',
+                                                })
+
+        self.env.ref('finance.voucher_line_12_debit').auxiliary_id = auxiliary_id.id
+        self.env['report.auxiliary.accounting'].view_voucher_line_detail()

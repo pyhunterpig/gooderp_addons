@@ -36,6 +36,10 @@ class voucher(models.Model):
 
     @api.model
     def _default_voucher_date(self):
+        return self._default_voucher_date_impl()
+    @api.model
+    def _default_voucher_date_impl(self):
+        ''' 获得默认的凭证创建日期 '''
         voucher_setting = self.env['ir.values'].get_default('finance.config.settings', 'default_voucher_date')
         now_date = fields.Date.context_today(self)
         if voucher_setting == 'last' and self.search([], limit=1):
@@ -54,14 +58,14 @@ class voucher(models.Model):
         default=lambda self: self.env.ref('finance.document_word_1'), help=u'“收款凭证”，凭证字就是“收”\n“付款凭证”，凭证字就是“付”\
         “转帐凭证”，凭证字就是“转”\n“记款凭证”，凭证字就是“记” (可以不用以上三种凭证字，就用记字也可以)')
     date = fields.Date(u'凭证日期', required=True, default=_default_voucher_date,
-                       track_visibility='always', help=u'本张凭证创建的时间！')
-    name = fields.Char(u'凭证号', track_visibility='always')
+                       track_visibility='always', help=u'本张凭证创建的时间！', copy=False)
+    name = fields.Char(u'凭证号', track_visibility='always', copy=False)
     att_count = fields.Integer(u'附单据', default=1, help='原始凭证的张数！')
     period_id = fields.Many2one(
         'finance.period',
         u'会计期间',
         compute='_compute_period_id', ondelete='restrict', store=True, help=u'本张凭证发生日期对应的，会计期间！')
-    line_ids = fields.One2many('voucher.line', 'voucher_id', u'凭证明细')
+    line_ids = fields.One2many('voucher.line', 'voucher_id', u'凭证明细', copy=True)
     amount_text = fields.Float(u'总计', compute='_compute_amount', store=True,
                                track_visibility='always',help=u'凭证金额')
     state = fields.Selection([('draft', u'草稿'),
@@ -84,7 +88,7 @@ class voucher(models.Model):
             raise ValidationError(u'请输入凭证行')
         for line in self.line_ids:
             if line.debit + line.credit == 0:
-                raise ValidationError(u'单行凭证行借和贷不能同时为0\n 借方金额为: %s .贷方金额为:%s' % (line.debit, line.credit))
+                raise ValidationError(u'单行凭证行借和贷不能同时为0\n 借方金额为: %s 贷方金额为:%s' % (line.debit, line.credit))
             if line.debit * line.credit != 0:
                 raise ValidationError(u'单行凭证行不能同时输入借和贷\n 摘要为%s的凭证行 借方为:%s 贷方为:%s' %
                                       (line.name, line.debit, line.credit))
@@ -143,7 +147,7 @@ class voucher_line(models.Model):
         move_obj = self.env['voucher']
         total = 0.0
         context= self._context
-        if  context.get('line_ids'):
+        if context.get('line_ids'):
             for move_line_dict in move_obj.resolve_2many_commands('line_ids', context.get('line_ids')):
                 data['name'] = data.get('name') or move_line_dict.get('name')
                 total += move_line_dict.get('debit', 0.0) - move_line_dict.get('credit', 0.0)
@@ -204,7 +208,7 @@ class voucher_line(models.Model):
                 'partner_id': [('name', '=', False)],
                 'goods_id': [('name', '=', False)],
                 'auxiliary_id': [('name', '=', False)]}}
-        if not self.account_id or self.account_id.auxiliary_financing:
+        if not self.account_id or not self.account_id.auxiliary_financing:
             return res
         if self.account_id.auxiliary_financing == 'partner':
             res['domain']['partner_id'] = [('c_category_id', '!=', False)]
@@ -221,7 +225,7 @@ class voucher_line(models.Model):
     def unlink(self):
         for active_voucher_line in self:
             if active_voucher_line.voucher_id.state == 'done':
-                raise UserError(u'不能删除已审核的凭证行\n 所属凭证%s\n凭证行摘要%s'
+                raise UserError(u'不能删除已审核的凭证行\n 所属凭证%s  凭证行摘要%s'
                                 %(active_voucher_line.voucher_id.name,active_voucher_line.name))
         return super(voucher_line, self).unlink()
 
@@ -429,7 +433,7 @@ class auxiliary_financing(models.Model):
         ('member', u'个人'),
         ('project', u'项目'),
         ('department', u'部门'),
-    ], u'分类', default='project')
+    ], u'分类', default=lambda self: self.env.context.get('type'))
 
     _sql_constraints = [
         ('name_uniq', 'unique(name)', '辅助核算不能重名')

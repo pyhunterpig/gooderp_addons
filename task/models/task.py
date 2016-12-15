@@ -12,6 +12,12 @@ TASK_STATES = [
     ('cancel', u'已取消'),
 ]
 
+AVAILABLE_PRIORITIES = [
+    ('0', u'一般'),
+    ('1', u'低'),
+    ('2', u'中'),
+    ('3', u'高'),
+]
 
 class project(models.Model):
     _name = 'project'
@@ -78,12 +84,6 @@ class project_invoice(models.Model):
         help=u'含税金额',
     )
 
-    date = fields.Date(
-        string='收款日期',
-        default=lambda self: fields.Date.context_today(self),
-        help=u'收款日期',
-    )
-
     date_due = fields.Date(
         string='到期日',
         default=lambda self: fields.Date.context_today(self),
@@ -135,7 +135,7 @@ class project_invoice(models.Model):
 class task(models.Model):
     _name = 'task'
     _inherit = ['mail.thread']
-    _order = 'sequence, id'
+    _order = 'sequence, priority desc, id'
 
     @api.multi
     def _compute_hours(self):
@@ -188,6 +188,12 @@ class task(models.Model):
                          compute=_compute_hours)
     sequence = fields.Integer(u'顺序')
     is_schedule = fields.Boolean(u'列入计划')
+    note = fields.Text(u'描述')
+    priority = fields.Selection(AVAILABLE_PRIORITIES,
+                                string=u'优先级',
+                                default=AVAILABLE_PRIORITIES[0][0])
+    color = fields.Integer('Color Index',
+                           default=0)
 
     @api.multi
     def assign_to_me(self):

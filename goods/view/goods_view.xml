@@ -32,12 +32,12 @@
 								<field name='uos_id' groups='goods.auxiliary_unit_groups' required='1'/>
 								<field name='conversion' attrs="{'required': [('uos_id', '!=', False)]}" groups='goods.auxiliary_unit_groups' />
 								<field name='barcode' />
+								<field name='note'/>
 							</group>
 							<group>
 	            				<div>
 	            					<field name='image' widget='image'
-	            						class="oe_right oe_avatar"
-	            						options='{"preview_image": "image", "size": [500, 500]}'/>
+	            						options='{"preview_image": "image", "size": [300, 300]}'/>
 	            				</div>
 							</group>
                 		</group>
@@ -92,6 +92,16 @@
 						</tree>
 					</field>
 				</form>
+			</field>
+		</record>
+		<record id='attribute_value_value_tree' model='ir.ui.view'>
+			<field name='name'>attribute value value tree</field>
+			<field name='model'>attribute.value.value</field>
+			<field name='arch' type='xml'>
+				<tree string='属性值'>
+					<field name='name'/>
+					<field name='category_id'/>
+				</tree>
 			</field>
 		</record>
 	</data>
