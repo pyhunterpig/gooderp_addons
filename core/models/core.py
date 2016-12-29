@@ -106,14 +106,16 @@ class bank_account(models.Model):
 class service(models.Model):
     ''' 是对其他收支业务的更细分类 '''
     _name = 'service'
-    _description = u'服务'
+    _description = u'收支项'
 
     name = fields.Char(u'名称', required=True)
     get_categ_id = fields.Many2one('core.category',
                                    u'收入类别', ondelete='restrict',
-                                   domain="[('type', '=', 'other_get')]")
+                                   domain="[('type', '=', 'other_get')]",
+                                   context={'type': 'other_get'})
     pay_categ_id = fields.Many2one('core.category',
                                    u'支出类别', ondelete='restrict',
-                                   domain="[('type', '=', 'other_pay')]")
+                                   domain="[('type', '=', 'other_pay')]",
+                                   context={'type': 'other_pay'})
     price = fields.Float(u'价格', required=True)
 

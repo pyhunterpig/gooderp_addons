@@ -1,4 +1,4 @@
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 from odoo import fields, models, api
 import odoo.addons.decimal_precision as dp
@@ -124,6 +124,19 @@ class sell_delivery(models.Model):
             self.address = self.partner_id.address
             self.mobile = self.partner_id.mobile
 
+            for line in self.line_out_ids:
+                if line.goods_id.tax_rate and self.partner_id.tax_rate:
+                    if line.goods_id.tax_rate >= self.partner_id.tax_rate:
+                        line.tax_rate = self.partner_id.tax_rate
+                    else:
+                        line.tax_rate = line.goods_id.tax_rate
+                elif line.goods_id.tax_rate and not self.partner_id.tax_rate:
+                    line.tax_rate = line.goods_id.tax_rate
+                elif not line.goods_id.tax_rate and self.partner_id.tax_rate:
+                    line.tax_rate = self.partner_id.tax_rate
+                else:
+                    line.tax_rate = self.env.user.company_id.output_tax_rate
+
     @api.onchange('discount_rate', 'line_in_ids', 'line_out_ids')
     def onchange_discount_rate(self):
         '''当优惠率或订单行发生变化时，单据优惠金额发生变化'''
@@ -181,14 +194,16 @@ class sell_delivery(models.Model):
                 raise UserError(u'产品 %s 的数量和产品含税单价不能小于0！' % line.goods_id.name)
         if not self.bank_account_id and self.receipt:
             raise UserError(u'收款额不为空时，请选择结算账户！')
-        if self.receipt > self.amount + self.partner_cost:
+        decimal_amount = self.env.ref('core.decimal_amount')
+        if float_compare(self.receipt, self.amount + self.partner_cost, precision_digits=decimal_amount.digits) == 1:
             raise UserError(u'本次收款金额不能大于优惠后金额！\n本次收款金额:%s 优惠后金额:%s' %
                             (self.receipt, self.amount + self.partner_cost))
         # 发库单/退货单 计算客户的 本次发货金额+客户应收余额 是否小于客户信用额度， 否则报错
         if not self.is_return:
             amount = self.amount + self.partner_cost
             if self.partner_id.credit_limit != 0:
-                if amount - self.receipt + self.partner_id.receivable > self.partner_id.credit_limit:
+                if float_compare(amount - self.receipt + self.partner_id.receivable, self.partner_id.credit_limit,
+                                 precision_digits=decimal_amount.digits) == 1:
                     raise UserError(u'本次发货金额 + 客户应收余额 - 本次收款金额 不能大于客户信用额度！\n\
                      本次发货金额:%s\n 客户应收余额:%s\n 本次收款金额:%s\n客户信用额度:%s' % (
                     amount, self.receipt, self.partner_id.receivable, self.partner_id.credit_limit))

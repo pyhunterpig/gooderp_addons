@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import odoo.addons.decimal_precision as dp
-from odoo import api, fields, models
+from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 
@@ -35,8 +35,15 @@ class goods(models.Model):
             vals.update({'uos_id': vals.get('uom_id')})
         return super(goods, self).create(vals)
 
+    @api.multi
+    def copy(self, default=None):
+        if default is None:
+            default = {}
+        default.update(name=_('%s (copy)') % (self.name))
+        return super(goods, self).copy(default=default)
+
     code = fields.Char(u'编号')
-    name = fields.Char(u'名称', required=True)
+    name = fields.Char(u'名称', required=True, copy=False)
     category_id = fields.Many2one('core.category', u'产品类别',
                                   ondelete='restrict',
                                   domain=[('type', '=', 'goods')],
@@ -50,6 +57,8 @@ class goods(models.Model):
     cost = fields.Float(u'成本',
                         required=True,
                         digits=dp.get_precision('Amount'))
+    tax_rate = fields.Float(u'税率(%)',
+                            help=u'产品税率')
 
     _sql_constraints = [
         ('name_uniq', 'unique(name)', '产品不能重名'),

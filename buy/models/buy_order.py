@@ -154,6 +154,21 @@ class buy_order(models.Model):
         total = sum(line.subtotal for line in self.line_ids)
         self.discount_amount = total * self.discount_rate * 0.01
 
+    @api.onchange('partner_id')
+    def onchange_partner_id(self):
+        if self.partner_id:
+            for line in self.line_ids:
+                if line.goods_id.tax_rate and self.partner_id.tax_rate:
+                    if line.goods_id.tax_rate >= self.partner_id.tax_rate:
+                        line.tax_rate = self.partner_id.tax_rate
+                    else:
+                        line.tax_rate = line.goods_id.tax_rate
+                elif line.goods_id.tax_rate and not self.partner_id.tax_rate:
+                    line.tax_rate = line.goods_id.tax_rate
+                elif not line.goods_id.tax_rate and self.partner_id.tax_rate:
+                    line.tax_rate = self.partner_id.tax_rate
+                else:
+                    line.tax_rate = self.env.user.company_id.import_tax_rate
 
     @api.multi
     def unlink(self):
@@ -276,7 +291,7 @@ class buy_order(models.Model):
             'warehouse_id': warehouse.id,
             'warehouse_dest_id': warehouse_dest.id,
             'date': self.planned_date,
-            'date_due': fields.Date.context_today(self),
+            'date_due': self.planned_date,
             'order_id': self.id,
             'origin': 'buy.receipt',
             'note': self.note,
@@ -424,6 +439,18 @@ class buy_order_line(models.Model):
                     self.price_taxed = line.price
                     break
 
+            if self.goods_id.tax_rate and self.order_id.partner_id.tax_rate:
+                if self.goods_id.tax_rate >= self.order_id.partner_id.tax_rate:
+                    self.tax_rate = self.order_id.partner_id.tax_rate
+                else:
+                    self.tax_rate = self.goods_id.tax_rate
+            elif self.goods_id.tax_rate and not self.order_id.partner_id.tax_rate:
+                self.tax_rate = self.goods_id.tax_rate
+            elif not self.goods_id.tax_rate and self.order_id.partner_id.tax_rate:
+                self.tax_rate = self.order_id.partner_id.tax_rate
+            else:
+                self.tax_rate = self.env.user.company_id.import_tax_rate
+
     @api.onchange('quantity', 'price_taxed', 'discount_rate')
     def onchange_discount_rate(self):
         '''当数量、单价或优惠率发生变化时，优惠金额发生变化'''
@@ -461,6 +488,8 @@ class payment(models.Model):
                             })
             self.env["money.order"].create({
                                 'partner_id': self.buy_id.partner_id.id,
+                                'bank_name': self.buy_id.partner_id.bank_name,
+                                'bank_num': self.buy_id.partner_id.bank_num,
                                     'date': fields.Date.context_today(self),
                                     'source_ids':
                                     [(0, 0, {'name':source_id.id,

@@ -1,4 +1,4 @@
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 from odoo import fields, models, api
 import odoo.addons.decimal_precision as dp
@@ -198,6 +198,18 @@ class sell_adjust_line(models.Model):
         if self.goods_id:
             self.uom_id = self.goods_id.uom_id
             self.price_taxed = self.goods_id.price
+
+            if self.goods_id.tax_rate and self.order_id.order_id.partner_id.tax_rate:
+                if self.goods_id.tax_rate >= self.order_id.order_id.partner_id.tax_rate:
+                    self.tax_rate = self.order_id.order_id.partner_id.tax_rate
+                else:
+                    self.tax_rate = self.goods_id.tax_rate
+            elif self.goods_id.tax_rate and not self.order_id.order_id.partner_id.tax_rate:
+                self.tax_rate = self.goods_id.tax_rate
+            elif not self.goods_id.tax_rate and self.order_id.order_id.partner_id.tax_rate:
+                self.tax_rate = self.order_id.order_id.partner_id.tax_rate
+            else:
+                self.tax_rate = self.env.user.company_id.output_tax_rate
 
     @api.onchange('quantity', 'price_taxed', 'discount_rate')
     def onchange_discount_rate(self):

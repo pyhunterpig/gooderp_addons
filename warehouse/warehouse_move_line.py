@@ -63,14 +63,14 @@ class wh_move_line(models.Model):
     @api.depends('move_id.warehouse_id')
     def _get_line_warehouse(self):
         self.warehouse_id = self.move_id.warehouse_id.id
-        if (self.move_id.origin == 'wh.assembly' or self.move_id.origin == 'wh.disassembly') and self.type == 'in':
+        if (self.move_id.origin == 'wh.assembly' or self.move_id.origin == 'wh.disassembly' or self.move_id.origin == 'outsource') and self.type == 'in':
             self.warehouse_id = self.env.ref('warehouse.warehouse_production').id
 
     @api.one
     @api.depends('move_id.warehouse_dest_id')
     def _get_line_warehouse_dest(self):
         self.warehouse_dest_id = self.move_id.warehouse_dest_id.id
-        if (self.move_id.origin == 'wh.assembly' or self.move_id.origin == 'wh.disassembly') and self.type == 'out':
+        if (self.move_id.origin == 'wh.assembly' or self.move_id.origin == 'wh.disassembly' or self.move_id.origin == 'outsource') and self.type == 'out':
             self.warehouse_dest_id = self.env.ref('warehouse.warehouse_production').id
 
     @api.one
@@ -89,7 +89,7 @@ class wh_move_line(models.Model):
         if self.goods_id and self.goods_qty:
             self.goods_uos_qty = self.goods_qty/self.goods_id.conversion
         else:
-            self.goods_uos_qty = 1
+            self.goods_uos_qty = 0
 
     move_id = fields.Many2one('wh.move', string=u'移库单', ondelete='cascade',
                               help=u'出库/入库/移库单行对应的移库单')
@@ -281,11 +281,13 @@ class wh_move_line(models.Model):
             self.lot_id = False
 
     def compute_lot_domain(self):
+        warehouse_id = self.env.context.get('default_warehouse_id')
         lot_domain = [('goods_id', '=', self.goods_id.id), ('state', '=', 'done'),
-            ('lot', '!=', False), ('qty_remaining', '>', 0)]
+            ('lot', '!=', False), ('qty_remaining', '>', 0),
+            ('warehouse_dest_id.type', '=', 'stock')]
 
-        if self.move_id:
-            lot_domain.append(('warehouse_dest_id', '=', self.move_id.warehouse_id.id))
+        if warehouse_id:
+            lot_domain.append(('warehouse_dest_id', '=', warehouse_id))
 
         if self.attribute_id:
             lot_domain.append(('attribute_id', '=', self.attribute_id.id))
@@ -299,7 +301,9 @@ class wh_move_line(models.Model):
                 self.warehouse_id, self.goods_qty, self.lot_id, self.attribute_id)
 
             self.cost_unit = cost_unit
-            self.cost = cost
+
+        if self.env.context.get('type') == 'in' and self.goods_id:
+            self.cost_unit = self.goods_id.cost
 
     @api.multi
     @api.onchange('goods_id', 'tax_rate')
@@ -309,6 +313,24 @@ class wh_move_line(models.Model):
             self.uos_id = self.goods_id.uos_id
             self.attribute_id = False
             self.cost_unit = self.tax_rate+100 and self.price_taxed / (1 + self.tax_rate * 0.01) or 0
+
+            partner_id = self.env.context.get('default_partner')
+            partner = self.env['partner'].browse(partner_id)
+            if self.goods_id.tax_rate and partner.tax_rate:
+                if self.goods_id.tax_rate >= partner.tax_rate:
+                    self.tax_rate = partner.tax_rate
+                else:
+                    self.tax_rate = self.goods_id.tax_rate
+            elif self.goods_id.tax_rate and not partner.tax_rate:
+                self.tax_rate = self.goods_id.tax_rate
+            elif not self.goods_id.tax_rate and partner.tax_rate:
+                self.tax_rate = partner.tax_rate
+            else:
+                if self.type == 'in':
+                    self.tax_rate = self.env.user.company_id.import_tax_rate
+                if self.type == 'out':
+                    self.tax_rate = self.env.user.company_id.output_tax_rate
+
             if self.goods_id.using_batch and self.goods_id.force_batch_one:
                 self.goods_qty = 1
                 self.goods_uos_qty = self.goods_id.anti_conversion_unit(
@@ -317,13 +339,11 @@ class wh_move_line(models.Model):
                 self.goods_qty = self.goods_id.conversion_unit(
                     self.goods_uos_qty or 1)
         else:
-            self.uom_id = False
-            self.uos_id = False
-            self.attribute_id = False
-            self.cost_unit = False
+            return
+
         self.compute_suggested_cost()
         self.compute_lot_compatible()
-        
+
         return {'domain': {'lot_id': self.compute_lot_domain()}}
 
     @api.multi
@@ -357,7 +377,7 @@ class wh_move_line(models.Model):
             self.lot_qty = self.lot_id.qty_remaining
             self.lot_uos_qty = self.goods_id.anti_conversion_unit(self.lot_qty)
 
-            if self.env.context.get('type') == 'internal':
+            if self.env.context.get('type') in ['internal', 'out']:
                 self.lot = self.lot_id.lot
 
     @api.onchange('goods_qty', 'price_taxed', 'discount_rate')

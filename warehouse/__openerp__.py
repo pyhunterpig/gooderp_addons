@@ -25,7 +25,7 @@
     "author": 'ZhengXiang',
     "website": "http://www.osbzr.com",
     "category": "Generic Modules",
-    "depends": ['core', 'goods', 'decimal_precision', 'web_sublist', 'web_float_limit', 'report_docx','finance'],
+    "depends": ['core', 'goods', 'decimal_precision', 'web_sublist', 'web_float_limit', 'report_docx','finance','money'],
     "description":
     '''
                         该模块实现了 GoodERP 中 仓库管理的功能。
@@ -73,4 +73,3 @@
     'installable': True,
     "active": False,
 }
-# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

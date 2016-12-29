@@ -116,6 +116,22 @@ class buy_receipt(models.Model):
         if self.discount_rate:
             self.discount_amount = total * self.discount_rate * 0.01
 
+    @api.onchange('partner_id')
+    def onchange_partner_id(self):
+        if self.partner_id:
+            for line in self.line_in_ids:
+                if line.goods_id.tax_rate and self.partner_id.tax_rate:
+                    if line.goods_id.tax_rate >= self.partner_id.tax_rate:
+                        line.tax_rate = self.partner_id.tax_rate
+                    else:
+                        line.tax_rate = line.goods_id.tax_rate
+                elif line.goods_id.tax_rate and not self.partner_id.tax_rate:
+                    line.tax_rate = line.goods_id.tax_rate
+                elif not line.goods_id.tax_rate and self.partner_id.tax_rate:
+                    line.tax_rate = self.partner_id.tax_rate
+                else:
+                    line.tax_rate = self.env.user.company_id.import_tax_rate
+
     def get_move_origin(self, vals):
         return self._name + (self.env.context.get('is_return') and
                              '.return' or '.buy')
@@ -175,10 +191,11 @@ class buy_receipt(models.Model):
         
         if not self.bank_account_id and self.payment:
             raise UserError(u'付款额不为空时，请选择结算账户！')
-        if self.payment > self.amount:
+        decimal_amount = self.env.ref('core.decimal_amount')
+        if float_compare(self.payment, self.amount, precision_digits=decimal_amount.digits) == 1:
             raise UserError(u'本次付款金额不能大于折后金额！\n付款金额:%s 折后金额:%s'%(self.payment,self.amount))
-        if (sum(cost_line.amount for cost_line in self.cost_line_ids) != 
-            sum(line.share_cost for line in self.line_in_ids)):
+        if float_compare(sum(cost_line.amount for cost_line in self.cost_line_ids),
+            sum(line.share_cost for line in self.line_in_ids), precision_digits=decimal_amount.digits) != 0:
             raise UserError(u'采购费用还未分摊或分摊不正确！\n采购费用:%s 分摊总费用:%s'%
                             (sum(cost_line.amount for cost_line in self.cost_line_ids),
                              sum(line.share_cost for line in self.line_in_ids)))

@@ -13,7 +13,6 @@ class test_staff(TransactionCase):
                                               'name': 'DemoUser',
                                               'user_id': 1,
                                               'job_id': self.env.ref('staff.staff_job_1').id})
-        staff_pro._get_image()
         staff_pro.onchange_job_id()
 
     def test_staff_contract_over_date(self):
@@ -68,3 +67,19 @@ class test_res_users(TransactionCase):
 
         with self.assertRaises(ValidationError):
             self.env.ref('staff.staff_1').user_id = user.id
+
+class test_leave(TransactionCase):
+    ''' 测试 请假 '''
+    def test_set_staff_id(self):
+        ''' 测试 请假人 默认值 '''
+        self.env['staff.leave'].create({
+                                        'name': 'go back home',
+                                        })
+    def test_onchange_data_start_or_stop(self):
+        ''' 测试 onchange_data_start_or_stop '''
+        leave = self.env['staff.leave'].create({
+                                                'name': 'go back home',
+                                                })
+        leave.date_start = '2016-12-10 09:00:00'
+        leave.date_stop = '2016-12-11 09:00:00'
+        leave.onchange_data_start_or_stop()

@@ -31,6 +31,7 @@
 								<field name='uom_id' required='1' />
 								<field name='uos_id' groups='goods.auxiliary_unit_groups' required='1'/>
 								<field name='conversion' attrs="{'required': [('uos_id', '!=', False)]}" groups='goods.auxiliary_unit_groups' />
+								<field name="tax_rate"/>
 								<field name='barcode' />
 								<field name='note'/>
 							</group>
@@ -88,7 +89,7 @@
 					<field name='value_ids'>
 						<tree editable='TOP' string='属性值'>
 							<field name='category_id'/>
-							<field name='value_id' />
+							<field name='value_id' context="{'default_category_id': category_id}"/>
 						</tree>
 					</field>
 				</form>

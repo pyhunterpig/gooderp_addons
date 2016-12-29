@@ -10,7 +10,7 @@ class goods(models.Model):
     using_batch = fields.Boolean(u'批号管理')
     force_batch_one = fields.Boolean(u'每批号数量为1')
     attribute_ids = fields.One2many('attribute', 'goods_id', string=u'属性')
-    image=fields.Binary(u'图片')
+    image=fields.Binary(u'图片', attachment=True)
     supplier_id = fields.Many2one('partner',u'供应商',domain=[('s_category_id','!=',False)])
     price = fields.Float(u'零售价')
     barcode = fields.Char(u'条形码')
@@ -73,6 +73,7 @@ class attribute_value(models.Model):
     value_id = fields.Many2one('attribute.value.value', u'值',
                                 ondelete='restrict', 
                                 domain="[('category_id','=',category_id)]",
+                                default=lambda self: self.env.context.get('default_category_id'),
                                 required='1')
 
 class attribute_value_value(models.Model):
