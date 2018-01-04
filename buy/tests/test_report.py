@@ -3,12 +3,12 @@ from odoo.tests.common import TransactionCase
 from odoo.exceptions import UserError
 
 
-class test_detail_wizard(TransactionCase):
+class TestDetailWizard(TransactionCase):
     '''测试采购明细表向导'''
 
     def setUp(self):
         ''' 准备报表数据 '''
-        super(test_detail_wizard, self).setUp()
+        super(TestDetailWizard, self).setUp()
         # 给wh_in_whin0修改时间，使其凭证在demo会计期间内
         self.env.ref('warehouse.wh_in_whin0').date = '2016-02-06'
 
@@ -16,15 +16,16 @@ class test_detail_wizard(TransactionCase):
         self.env.ref('money.get_40000').money_order_done()
         self.env.ref('money.pay_2000').money_order_done()
 
-        # 给buy_order_1中的产品“键盘”的分类设置科目
-        self.env.ref('core.goods_category_1').account_id = self.env.ref('finance.account_goods').id
+        # 给buy_order_1中的商品“键盘”的分类设置科目
+        self.env.ref('core.goods_category_1').account_id = self.env.ref(
+            'finance.account_goods').id
         warehouse_obj = self.env.ref('warehouse.wh_in_whin0')
         warehouse_obj.approve_order()
         self.order = self.env.ref('buy.buy_order_1')
         self.order.bank_account_id = False
         self.order.buy_order_done()
         self.receipt = self.env['buy.receipt'].search(
-                       [('order_id', '=', self.order.id)])
+            [('order_id', '=', self.order.id)])
         self.receipt.bank_account_id = self.env.ref('core.comm')
         self.env.ref('money.get_40000').money_order_done()
         self.receipt.payment = 2.0
@@ -38,21 +39,21 @@ class test_detail_wizard(TransactionCase):
         return_order.bank_account_id = False
         return_order.buy_order_done()
         return_receipt = self.env['buy.receipt'].search(
-                       [('order_id', '=', return_order.id)])
+            [('order_id', '=', return_order.id)])
         return_receipt.buy_receipt_done()
 
     def test_button_ok(self):
         '''测试采购明细表确认按钮'''
         # 日期报错
         detail = self.detail_obj.create({
-                             'date_start': '2016-11-01',
-                             'date_end': '2016-1-01',
-                             })
+            'date_start': '2016-11-01',
+            'date_end': '2016-1-01',
+        })
         with self.assertRaises(UserError):
             detail.button_ok()
         # 按日期搜索
         self.detail.button_ok()
-        # 按产品、供应商、单据编号、仓库搜索
+        # 按商品、供应商、单据编号、仓库搜索
         self.detail.goods_id = self.env.ref('goods.mouse').id
         self.detail.partner_id = self.env.ref('core.lenovo').id
         self.detail.order_id = self.receipt.id
@@ -64,49 +65,51 @@ class test_detail_wizard(TransactionCase):
         self.detail.button_ok()
         goods_id = self.env.ref('goods.keyboard').id
         detail_line = self.env['buy.order.detail'].search(
-                                [('goods_id', '=', goods_id)])
+            [('goods_id', '=', goods_id)])
         for line in detail_line:
             line.view_detail()
 
 
-class test_track_wizard(TransactionCase):
+class TestTrackWizard(TransactionCase):
     '''测试采购订单跟踪表向导'''
 
     def setUp(self):
         ''' 准备报表数据 '''
-        super(test_track_wizard, self).setUp()
+        super(TestTrackWizard, self).setUp()
         # 因同一个业务伙伴不能存在两张未审核的收付款单，把系统里已有的相关业务伙伴未审核的收付款单审核
         self.env.ref('money.get_40000').money_order_done()
         self.env.ref('money.pay_2000').money_order_done()
-        # 给产品的分类设置科目
-        self.env.ref('core.goods_category_1').account_id = self.env.ref('finance.account_goods').id
+        # 给商品的分类设置科目
+        self.env.ref('core.goods_category_1').account_id = self.env.ref(
+            'finance.account_goods').id
         warehouse_obj = self.env.ref('warehouse.wh_in_whin0')
         # 给wh_in_whin0修改时间，使其凭证在demo会计期间内
         self.env.ref('warehouse.wh_in_whin0').date = '2016-02-06'
         warehouse_obj.approve_order()
         self.order = self.env.ref('buy.buy_order_1')
-        order_2 = self.order.copy()
+        order_2 = self.env.ref('buy.buy_order_1_same')
+        order_2.quantity = 1
         for line in order_2.line_ids:
             line.goods_id = self.env.ref('goods.mouse').id
         order_2.bank_account_id = False
         order_2.buy_order_done()
         receipt_2 = self.env['buy.receipt'].search(
-                    [('order_id', '=', order_2.id)])
+            [('order_id', '=', order_2.id)])
         line_lists = []
         for line in receipt_2.line_in_ids:
             if line.id not in line_lists:
                 line.lot = 'mouse_lot_' + str(line.id)
-                line.goods_qty = 5
+                line.goods_qty = 1
             line_lists.append(line.id)
 
         receipt_2.buy_receipt_done()
         receipt_3 = self.env['buy.receipt'].search(
-                    [('order_id', '=', order_2.id), ('state', '=', 'draft')])
+            [('order_id', '=', order_2.id), ('state', '=', 'draft')])
         receipt_3.buy_receipt_done()
         self.order.bank_account_id = False
         self.order.buy_order_done()
         self.receipt = self.env['buy.receipt'].search(
-                       [('order_id', '=', self.order.id)])
+            [('order_id', '=', self.order.id)])
         self.receipt.bank_account_id = self.env.ref('core.comm')
         self.env.ref('money.get_40000').money_order_done()
         self.receipt.payment = 2.0
@@ -120,14 +123,14 @@ class test_track_wizard(TransactionCase):
         '''测试采购订单跟踪表确认按钮'''
         # 日期报错
         track = self.track_obj.create({
-                             'date_start': '2016-11-01',
-                             'date_end': '2016-1-01',
-                             })
+            'date_start': '2016-11-01',
+            'date_end': '2016-1-01',
+        })
         with self.assertRaises(UserError):
             track.button_ok()
         # 按日期搜索
         self.track.button_ok()
-        # 按产品、供应商、订单号、仓库搜索
+        # 按商品、供应商、订单号、仓库搜索
         self.track.goods_id = self.env.ref('goods.mouse').id
         self.track.partner_id = self.env.ref('core.lenovo').id
         self.track.order_id = self.order.id
@@ -138,21 +141,23 @@ class test_track_wizard(TransactionCase):
         '''查看明细按钮'''
         self.track.button_ok()
         goods_id = self.env.ref('goods.cable').id
-        track_line = self.env['buy.order.track'].search([('goods_id', '=', goods_id)])
+        track_line = self.env['buy.order.track'].search(
+            [('goods_id', '=', goods_id)])
         track_line[0].view_detail()
 
 
-class test_payment_wizard(TransactionCase):
+class TestPaymentWizard(TransactionCase):
     '''测试采购付款一览表向导'''
 
     def setUp(self):
         ''' 准备报表数据 '''
-        super(test_payment_wizard, self).setUp()
+        super(TestPaymentWizard, self).setUp()
         # 因同一个业务伙伴不能存在两张未审核的收付款单，把系统里已有的相关业务伙伴未审核的收付款单审核
         self.env.ref('money.get_40000').money_order_done()
         self.env.ref('money.pay_2000').money_order_done()
-        # 给buy_order_1中的产品“键盘”的分类设置科目
-        self.env.ref('core.goods_category_1').account_id = self.env.ref('finance.account_goods').id
+        # 给buy_order_1中的商品“键盘”的分类设置科目
+        self.env.ref('core.goods_category_1').account_id = self.env.ref(
+            'finance.account_goods').id
         self.env.ref('warehouse.wh_in_whin0').date = '2016-02-06'
         warehouse_obj = self.env.ref('warehouse.wh_in_whin0')
         warehouse_obj.approve_order()
@@ -160,19 +165,18 @@ class test_payment_wizard(TransactionCase):
         self.order.bank_account_id = False
         self.order.buy_order_done()
         self.receipt = self.env['buy.receipt'].search(
-                       [('order_id', '=', self.order.id)])
+            [('order_id', '=', self.order.id)])
         self.receipt.bank_account_id = self.env.ref('core.comm')
         self.env.ref('money.get_40000').money_order_done()
         self.receipt.payment = 2.0
         new_receipt = self.receipt.copy()
-#         new_receipt.discount_amount = 585   # 使入库单的优惠后金额为0
         new_receipt.payment = 0
         new_receipt.bank_account_id = False
         new_receipt.buy_receipt_done()
         self.receipt.buy_receipt_done()
         # 查找产生的付款单，并审核
         source_line = self.env['source.order.line'].search(
-                [('name', '=', self.receipt.invoice_id.id)])
+            [('name', '=', self.receipt.invoice_id.id)])
         for line in source_line:
             line.money_id.money_order_done()
         self.receipt_return = self.browse_ref('buy.buy_receipt_return_1')
@@ -184,9 +188,9 @@ class test_payment_wizard(TransactionCase):
         '''测试采购付款一览表确认按钮'''
         # 日期报错
         payment = self.payment_obj.create({
-                             'date_start': '2016-11-01',
-                             'date_end': '2016-1-01',
-                             })
+            'date_start': '2016-11-01',
+            'date_end': '2016-1-01',
+        })
         with self.assertRaises(UserError):
             payment.button_ok()
         # 按日期搜索
@@ -203,7 +207,7 @@ class test_payment_wizard(TransactionCase):
         '''查看明细按钮'''
         self.payment.button_ok()
         payment_line = self.env['buy.payment'].search(
-                                [('order_name', '=', self.receipt.name)])
+            [('order_name', '=', self.receipt.name)])
         for line in payment_line:
             line.view_detail()
         payment_line2 = self.env['buy.payment'].search(
@@ -212,13 +216,14 @@ class test_payment_wizard(TransactionCase):
             line.view_detail()
 
 
-class test_goods_wizard(TransactionCase):
+class TestGoodsWizard(TransactionCase):
     '''测试采购汇总表（按商品）向导'''
 
     def setUp(self):
         ''' 准备报表数据 '''
-        super(test_goods_wizard, self).setUp()
-        self.env.ref('core.goods_category_1').account_id = self.env.ref('finance.account_goods').id
+        super(TestGoodsWizard, self).setUp()
+        self.env.ref('core.goods_category_1').account_id = self.env.ref(
+            'finance.account_goods').id
         # 因同一个业务伙伴不能存在两张未审核的收付款单，把系统里已有的相关业务伙伴未审核的收付款单审核
         self.env.ref('money.get_40000').money_order_done()
         self.env.ref('money.pay_2000').money_order_done()
@@ -230,7 +235,7 @@ class test_goods_wizard(TransactionCase):
         self.order.bank_account_id = False
         self.order.buy_order_done()
         self.receipt = self.env['buy.receipt'].search(
-                       [('order_id', '=', self.order.id)])
+            [('order_id', '=', self.order.id)])
         self.receipt.bank_account_id = self.env.ref('core.comm')
         self.env.ref('money.get_40000').money_order_done()
         self.receipt.payment = 2.0
@@ -249,9 +254,9 @@ class test_goods_wizard(TransactionCase):
         '''采购汇总表（按商品）向导确认按钮'''
         # 日期报错
         goods_wizard = self.goods_wizard_obj.create({
-                             'date_start': '2016-11-01',
-                             'date_end': '2016-1-01',
-                             })
+            'date_start': '2016-11-01',
+            'date_end': '2016-1-01',
+        })
         with self.assertRaises(UserError):
             goods_wizard.button_ok()
         # 按日期搜索
@@ -269,7 +274,7 @@ class test_goods_wizard(TransactionCase):
         new_wizard.warehouse_dest_id = self.hd_stock.id
         new_context = new_wizard.button_ok().get('context')
         new_results = summary_goods.with_context(new_context).search_read(
-                                                                  domain=[])
+            domain=[])
         self.assertEqual(len(results), 2)
         self.assertEqual(len(new_results), 0)
 
@@ -288,13 +293,14 @@ class test_goods_wizard(TransactionCase):
             summary_line.with_context(context).view_detail()
 
 
-class test_partner_wizard(TransactionCase):
+class TestPartnerWizard(TransactionCase):
     '''测试采购汇总表（按供应商）向导'''
 
     def setUp(self):
         ''' 准备报表数据 '''
-        super(test_partner_wizard, self).setUp()
-        self.env.ref('core.goods_category_1').account_id = self.env.ref('finance.account_goods').id
+        super(TestPartnerWizard, self).setUp()
+        self.env.ref('core.goods_category_1').account_id = self.env.ref(
+            'finance.account_goods').id
         # 因同一个业务伙伴不能存在两张未审核的收付款单，把系统里已有的相关业务伙伴未审核的收付款单审核
         self.env.ref('money.get_40000').money_order_done()
         self.env.ref('money.pay_2000').money_order_done()
@@ -306,7 +312,7 @@ class test_partner_wizard(TransactionCase):
         self.order.bank_account_id = False
         self.order.buy_order_done()
         self.receipt = self.env['buy.receipt'].search(
-                       [('order_id', '=', self.order.id)])
+            [('order_id', '=', self.order.id)])
         self.receipt.bank_account_id = self.env.ref('core.comm')
         self.env.ref('money.get_40000').money_order_done()
         self.receipt.payment = 2.0
@@ -320,9 +326,9 @@ class test_partner_wizard(TransactionCase):
         '''采购汇总表（按供应商）向导确认按钮'''
         # 日期报错
         partner = self.partner_obj.create({
-                             'date_start': '2016-11-01',
-                             'date_end': '2016-1-01',
-                             })
+            'date_start': '2016-11-01',
+            'date_end': '2016-1-01',
+        })
         with self.assertRaises(UserError):
             partner.button_ok()
 
@@ -340,7 +346,7 @@ class test_partner_wizard(TransactionCase):
             self.env.ref('warehouse.hd_stock').id
         new_context = new_wizard.button_ok().get('context')
         new_results = summary_partner.with_context(new_context).search_read(
-                                                                    domain=[])
+            domain=[])
         self.assertEqual(len(results), 2)
         self.assertEqual(len(new_results), 0)
 

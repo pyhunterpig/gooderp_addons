@@ -10,6 +10,7 @@ from odoo.tools import misc
 import ooxml
 from ooxml import parse, serialize, importer
 import codecs
+from datetime import datetime
 
 import pdfkit
 _logger = logging.getLogger(__name__)
@@ -18,7 +19,9 @@ import pytz
 from odoo import models
 from odoo import fields
 from odoo import api
-import tempfile, os
+import tempfile
+import os
+
 
 class DataModelProxy(object):
     '''使用一个代理类，来转发 model 的属性，用来消除掉属性值为 False 的情况
@@ -46,7 +49,8 @@ class DataModelProxy(object):
 
     def _compute_by_datetime(self, field, temp):
         if field and field.type == 'datetime' and temp:
-            tz = pytz.timezone(self.data.env.context.get('tz') or self.DEFAULT_TZ)
+            tz = pytz.timezone(
+                self.data.env.context.get('tz') or self.DEFAULT_TZ)
             temp_date = fields.Datetime.from_string(temp) + tz._utcoffset
             temp = fields.Datetime.to_string(temp_date)
 
@@ -88,6 +92,7 @@ class DataModelProxy(object):
 
 class IterDataModelProxy(object):
     '''迭代器类，用 next 函数支持 for in 操作'''
+
     def __init__(self, data):
         self.data = data
         self.length = len(data)
@@ -114,21 +119,22 @@ class ReportDocx(report_sxw):
 
         return super(ReportDocx, self).create(cr, uid, ids, data, context)
 
-    def generate_temp_file(self,tempname, suffix='docx'):
+    def generate_temp_file(self, tempname, suffix='docx'):
         return os.path.join(tempname, 'temp_%s_%s.%s' %
                             (os.getpid(), random.randint(1, 10000), suffix))
 
     def create_source_docx(self, cr, uid, ids, report, context=None):
-        data = DataModelProxy(self.get_docx_data(cr, uid, ids, report, context))
+        data = DataModelProxy(self.get_docx_data(
+            cr, uid, ids, report, context))
         tempname = tempfile.mkdtemp()
         temp_out_file = self.generate_temp_file(tempname)
 
         doc = DocxTemplate(misc.file_open(report.template_file).name)
-        #2016-11-2 支持了图片
-        #1.导入依赖，python3语法
+        # 2016-11-2 支持了图片
+        # 1.导入依赖，python3语法
         from . import report_helper
-        #2. 需要添加一个"tpl"属性获得模版对象
-        doc.render({'obj': data,'tpl':doc},report_helper.get_env())
+        # 2. 需要添加一个"tpl"属性获得模版对象
+        doc.render({'obj': data, 'tpl': doc}, report_helper.get_env())
         doc.save(temp_out_file)
 
         if report.output_type == 'pdf':
@@ -144,14 +150,14 @@ class ReportDocx(report_sxw):
 
     def render_to_pdf(self, temp_file):
         tempname = tempfile.mkdtemp()
-        temp_out_file_html = self.generate_temp_file(tempname,suffix='html')
+        temp_out_file_html = self.generate_temp_file(tempname, suffix='html')
         temp_out_file_pdf = self.generate_temp_file(tempname, suffix='pdf')
 
         ofile = ooxml.read_from_file(temp_file)
         html = """<html style="height: 100%">
             <head>
                 <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
-                <meta http-equiv="content-type" content="text/html; charset=utf-8"/>'
+                <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
             </head>
             <body>
             """
@@ -170,6 +176,10 @@ class ReportDocx(report_sxw):
 
     def get_docx_data(self, cr, uid, ids, report, context):
         env = api.Environment(cr, uid, context)
+        # 打印时， 在消息处显示打印人
+        message = str((datetime.now()).strftime('%Y-%m-%d %H:%M:%S')) + ' ' + env.user.name + u' 打印了该单据'
+        env.get(report.model).message_post(body=message)
+
         return env.get(report.model).browse(ids)
 
     def _save_file(self, folder_name, file):

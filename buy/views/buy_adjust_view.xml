@@ -7,13 +7,14 @@
             <field name="name">buy.adjust.tree</field>
             <field name="model">buy.adjust</field>
             <field name="arch" type="xml">
-                <tree string="采购变更单">
+                <tree string="采购变更单" colors='blue:state == "draft";lightgray:state == "cancel"'>
                     <field name="date"/>
                     <field name="name"/>
                     <field name="order_id"/>
                     <field name="create_uid" string="制单人"/>
                     <field name="approve_uid"/>
                     <field name="state"/>
+                    <field name="_approve_state"/>
                 </tree>
             </field>
         </record>
@@ -25,6 +26,7 @@
                 <form string="采购变更单">
                 <header>
                 	<button name="buy_adjust_done" states="draft" string="审核" type="object" class="oe_highlight"/>
+                    <button name="action_cancel" states="draft" string="作废" type="object"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,done" statusbar_colors='{"done":"blue"}' readonly="1"/>
                 </header>
                 <sheet>
@@ -33,6 +35,8 @@
                             <field name="order_id" required="1"
                             	domain="[('state', '=', 'done'), ('type', '=', 'buy')]"
                             	options="{'no_create': True}"/>
+                            <field name='user_id'
+                                   options="{'no_open': True, 'no_create': True}"/>
                         </group>
                         <group>
                         	<field name="date" required="1"/>
@@ -72,8 +76,9 @@
                     </group>
                 </sheet>
                 <div class="oe_chatter">
-                    <field name="message_follower_ids" widget="mail_followers"/>
-                    <field name="message_ids" widget="mail_thread"/>
+	                    <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="_to_approver_ids" widget="goodprocess" readonly="1"/>
+	                    <field name="message_ids" widget="mail_thread"/>
                 </div>
                 </form>
             </field>

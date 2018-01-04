@@ -9,7 +9,6 @@
                     <field name='name' />
                     <field name='date' />
                     <field name='warehouse_id' groups='warehouse.multi_warehouse_groups' />
-                    <field name='goods' />
                     <field name='state' />
                 </tree>
             </field>
@@ -41,13 +40,13 @@
 
                         <group >
                             <group>
-                                <field name='warehouse_id' attrs="{'readonly': [('state', 'not in', ('draft', 'query'))]}"/>
-                                <field name='goods' help='输入产品的关键字，将只会查询到关键字匹配到的产品' attrs="{'readonly': [('state', 'not in', ('draft', 'query'))]}" />
+                                <field name='warehouse_id' attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                                <field name='goods' widget="many2many_tags" attrs="{'readonly': [('state', '!=', 'draft')]}" />
                                 <field name='out_id' invisible='1' />
                                 <field name='in_id' invisible='1' />
                             </group>
                             <group>
-                                <field name='date' required='1' attrs="{'readonly': [('state', 'not in', ('draft', 'query'))]}" />
+                                <field name='date' required='1' attrs="{'readonly': [('state', '!=', 'draft')]}" />
                             </group>
                         </group>
 
@@ -57,25 +56,27 @@
                                     <field name='goods_id' readonly='1 '/>
                                     <field name='attribute_id' readonly='1' groups='goods.multi_attrs_groups' />
                                     <field name='lot' readonly='1' groups='goods.batch_groups' />
-                                    <field name='inventory_uos_qty' groups='goods.auxiliary_unit_groups' />
-                                    <field name='uos_id' readonly='1' groups='goods.auxiliary_unit_groups' />
-                                    <field name='inventory_qty' />
-                                    <field name='uom_id' readonly='1' />
                                     <field name='real_uos_qty' readonly='1' sum='1' groups='goods.auxiliary_unit_groups' />
                                     <field name='real_qty' readonly='1' sum='1' />
+                                    <field name='inventory_uos_qty' sum='1' groups='goods.auxiliary_unit_groups' />
+                                    <field name='uos_id' readonly='1' groups='goods.auxiliary_unit_groups' />
+                                    <field name='inventory_qty' sum='1' />
+                                    <field name='uom_id' readonly='1' />
                                     <!--readonly 应该为invisible ?-->
                                     <field name='new_lot'
                                     	attrs="{'readonly': [('lot_type', '!=', 'in')], 'required': [('lot_type', '=', 'in')]}"
                                     	groups='goods.batch_groups' />
 
-                                    <field name='new_lot_id'
+                                    <!--批号已有，所以不需要盘亏批号，去掉盘亏批号-->
+                                    <!-- <field name='new_lot_id'
                                     	attrs="{'readonly': [('lot_type', '!=', 'out')], 'required': [('lot_type', '=', 'out')]}"
                                     	domain="[('goods_id', '=', goods_id), ('state', '=', 'done'), ('lot', '!=', False), ('qty_remaining', '>', 0), ('lot', '=', lot)]"
                                     	context="{'lot': True}"
                                     	options="{'no_open': True, 'no_create': True}"
-                                    	groups='goods.batch_groups' />
-                                    <field name='difference_uos_qty' readonly='1' groups='goods.auxiliary_unit_groups' />
-                                    <field name='difference_qty' readonly='1' />
+                                    	groups='goods.batch_groups'
+                                    	invisible='1' /> -->
+                                    <field name='difference_uos_qty' readonly='1' sum='1' groups='goods.auxiliary_unit_groups' />
+                                    <field name='difference_qty' readonly='1' sum='1' />
                                     <field name='lot_type' invisible='1' />
                                 </tree>
                             </field>
@@ -96,6 +97,11 @@
                             </group>
                         </group>
                     </sheet>
+                    <div class="oe_chatter">
+	                    <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="_to_approver_ids" widget="goodprocess" readonly="1"/>
+	                    <field name="message_ids" widget="mail_thread"/>
+	                </div>
                 </form>
             </field>
         </record>
@@ -111,7 +117,7 @@
                     <filter string="未完成" domain="[('state','!=','done')]" name="not_done_inventory_filter"/>
                     <group expand="0" string="分组">
                         <filter string="仓库" domain="[]" context="{'group_by':'warehouse_id'}"/>
-                        <filter string="产品" domain="[]" context="{'group_by':'goods'}"/>
+                        <filter string="商品" domain="[]" context="{'group_by':'goods'}"/>
                         <filter string="单据日期" domain="[]" context="{'group_by':'date:day'}"/>
                     </group>
                 </search>

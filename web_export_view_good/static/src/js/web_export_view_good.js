@@ -43,8 +43,8 @@ function compute_main_data(rows,export_columns_keys){
                 var cell_object =$row.find('td[data-field="' + column + '"]');
                 var text = cell.text || cell.textContent || cell.innerHTML || "";
                 var is_boolean_cell = cell_object.find('.o_checkbox input[type=checkbox]');
-                if (cell.classList.contains("o_list_number")) {
-                    export_row.push(text.trim());
+                if (cell.classList.contains("oe_list_field_float")||cell.classList.contains("o_list_number")||cell.classList.contains("oe_number")) {
+                    export_row.push(formats.parse_value(text, {'type': "float"}, 0));
                 }else if (is_boolean_cell.length>0) {
                     if (is_boolean_cell.get(0).checked) {
                         export_row.push('√');
@@ -76,7 +76,7 @@ function compute_footer_data(amount,export_columns_keys) {
     $.each(amount, function () {
         var $row = $(this);
         var export_row =  new Array(export_columns_keys.length);;
-        var index = 0;
+        var index = 1;
         $.each(export_columns_keys, function () {
             var cell = $row.find('td').get(index);
             index = index + 1;
@@ -136,8 +136,11 @@ function button_export_action () {
                     }
                     export_rows.splice(0, 0, newArray);
                 }
-                export_rows.splice(0, 0, []);
+                for(var i=0;i<data[2];i++){
+                    export_rows.splice(i, 0, []);
+                }
                 header[0] =  view.name
+
                 $.blockUI();
                 view.session.get_file({
 				                url: '/web/export/export_xls_view',

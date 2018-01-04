@@ -4,7 +4,7 @@ import odoo.addons.decimal_precision as dp
 from odoo import fields, models, api
 
 
-class buy_order_track(models.TransientModel):
+class BuyOrderTrack(models.TransientModel):
     _name = 'buy.order.track'
     _description = u'采购订单跟踪表'
 
@@ -26,6 +26,7 @@ class buy_order_track(models.TransientModel):
     planned_date = fields.Date(u'要求交货日期')
     wh_in_date = fields.Date(u'入库日期')
     note = fields.Char(u'备注')
+    type = fields.Selection([('buy', u'购货'),('return', u'退货')], string=u'单据类型')
 
     @api.multi
     def view_detail(self):

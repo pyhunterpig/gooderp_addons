@@ -9,15 +9,17 @@
                             该模块实现了 GoodERP 中人力资源的功能。
     ''',
     'version': '11.11',
-    'depends': ['base','core','finance'],
+    'depends': ['finance'],
     'demo': [
-             'tests/staff_demo.xml'
-        ],
+        'tests/staff_demo.xml'
+    ],
     'data': [
-             'security/ir.model.access.csv',
-             'security/groups.xml',
-             'staff.xml',
-             'leave.xml',
-             'mail_data.xml',
-        ],
+        'security/ir.model.access.csv',
+        'security/groups.xml',
+        'security/rules.xml',
+        'views/staff.xml',
+        'views/leave.xml',
+        'data/mail_data.xml',
+        'data/export_data.xml',
+    ],
 }

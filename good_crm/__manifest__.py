@@ -16,11 +16,13 @@
     'category': 'gooderp',
     'version': '11.11',
 
-    'depends': ['core', 'task'],
+    'depends': ['task'],
 
     'data': [
         'security/ir.model.access.csv',
+        'security/groups.xml',
         'views/crm_view.xml',
+        'data/crm_data.xml',
     ],
     'application': True,
 }

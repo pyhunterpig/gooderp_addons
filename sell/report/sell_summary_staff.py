@@ -5,13 +5,13 @@ from odoo import fields, models, api
 import datetime
 
 
-class sell_summary_staff(models.Model):
+class SellSummaryStaff(models.Model):
     _name = 'sell.summary.staff'
     _inherit = 'report.base'
     _description = u'销售汇总表（按销售人员）'
 
     id_lists = fields.Text(u'移动明细行id列表')
-    staff_id = fields.Many2one('staff', u'销售人员')
+    user_id = fields.Many2one('res.users', u'销售员')
     goods_code = fields.Char(u'商品编号')
     goods = fields.Char(u'商品名称')
     attribute = fields.Char(u'属性')
@@ -20,7 +20,7 @@ class sell_summary_staff(models.Model):
     uos = fields.Char(u'辅助单位')
     qty = fields.Float(u'基本数量', digits=dp.get_precision('Quantity'))
     uom = fields.Char(u'基本单位')
-    price = fields.Float(u'单价', digits=dp.get_precision('Amount'))
+    price = fields.Float(u'单价', digits=dp.get_precision('Price'))
     amount = fields.Float(u'销售收入', digits=dp.get_precision('Amount'))
     tax_amount = fields.Float(u'税额', digits=dp.get_precision('Amount'))
     subtotal = fields.Float(u'价税合计', digits=dp.get_precision('Amount'))
@@ -30,7 +30,7 @@ class sell_summary_staff(models.Model):
         return '''
         SELECT MIN(wml.id) as id,
                array_agg(wml.id) AS id_lists,
-               staff.id AS staff_id,
+               res_users.id AS user_id,
                goods.code AS goods_code,
                goods.name AS goods,
                attr.name AS attribute,
@@ -66,8 +66,8 @@ class sell_summary_staff(models.Model):
             LEFT JOIN wh_move wm ON wml.move_id = wm.id
             LEFT JOIN sell_delivery AS sd
                  ON wm.id = sd.sell_move_id
-            LEFT JOIN staff
-                 ON wm.staff_id = staff.id
+            LEFT JOIN res_users
+                 ON wm.user_id = res_users.id
             LEFT JOIN goods ON wml.goods_id = goods.id
             LEFT JOIN core_category AS categ ON goods.category_id = categ.id
             LEFT JOIN attribute AS attr ON wml.attribute_id = attr.id
@@ -79,8 +79,8 @@ class sell_summary_staff(models.Model):
 
     def where_sql(self, sql_type='out'):
         extra = ''
-        if self.env.context.get('staff_id'):
-            extra += 'AND staff.id = {staff_id}'
+        if self.env.context.get('user_id'):
+            extra += 'AND res_users.id = {user_id}'
         if self.env.context.get('goods_id'):
             extra += 'AND goods.id = {goods_id}'
         if self.env.context.get('goods_categ_id'):
@@ -99,12 +99,12 @@ class sell_summary_staff(models.Model):
 
     def group_sql(self, sql_type='out'):
         return '''
-        GROUP BY staff.id,goods_code,goods,attribute,warehouse,uos,uom,wml.cost_unit
+        GROUP BY res_users.id,goods_code,goods,attribute,warehouse,uos,uom,wml.cost_unit
         '''
 
     def order_sql(self, sql_type='out'):
         return '''
-        ORDER BY staff,goods_code,attribute,warehouse
+        ORDER BY user_id,goods_code,attribute,warehouse
         '''
 
     def get_context(self, sql_type='out', context=None):
@@ -114,19 +114,19 @@ class sell_summary_staff(models.Model):
         return {
             'date_start': context.get('date_start') or '',
             'date_end': date_end,
-            'staff_id': context.get('staff_id') and
-                context.get('staff_id')[0] or '',
+            'user_id': context.get('user_id') and
+            context.get('user_id')[0] or '',
             'goods_id': context.get('goods_id') and
-                context.get('goods_id')[0] or '',
+            context.get('goods_id')[0] or '',
             'goods_categ_id': context.get('goods_categ_id') and
-                context.get('goods_categ_id')[0] or '',
+            context.get('goods_categ_id')[0] or '',
             'warehouse_id': context.get('warehouse_id') and
-                context.get('warehouse_id')[0] or '',
+            context.get('warehouse_id')[0] or '',
         }
 
     def _compute_order(self, result, order):
-        order = order or 'staff ASC'
-        return super(sell_summary_staff, self)._compute_order(result, order)
+        order = order or 'user_id ASC'
+        return super(SellSummaryStaff, self)._compute_order(result, order)
 
     def collect_data_by_sql(self, sql_type='out'):
         collection = self.execute_sql(sql_type='out')
@@ -145,7 +145,7 @@ class sell_summary_staff(models.Model):
             if line.get('id') == self.id:
                 line_ids = line.get('id_lists')
                 move_lines = self.env['wh.move.line'].search(
-                        [('id', 'in', line_ids)])
+                    [('id', 'in', line_ids)])
 
         for move_line in move_lines:
             details = self.env['sell.order.detail'].search(

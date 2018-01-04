@@ -13,8 +13,9 @@
 	                	</group>
                         <footer>
                             <button name="button_checkout" type="object" string="结账" class="oe_highlight"/>
-                            or
-                            <button name="button_counter_checkout" type="object" string="反结账" class="oe_highlight"/>
+                            _
+                            <button name="button_counter_checkout" type="object" string="反结账" 
+                                                       groups="base.group_no_one" class="oe_highlight"/>
                         </footer>
                 	</group>
                 </form>
@@ -29,6 +30,6 @@
         </record>
         <!--结账菜单-->
         <menuitem id='checkout_menu' name='月末结账' parent='finance_menu' sequence='15'/>
-        <menuitem id='preiod_check_menu' action='preiod_check_action' parent='checkout_menu' sequence='10'/>
+        <menuitem id='preiod_check_menu' name='月末结账' action='preiod_check_action' parent='checkout_menu' sequence='30'/>
     </data>
 </openerp>

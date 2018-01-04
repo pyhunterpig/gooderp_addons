@@ -25,7 +25,7 @@
     "author": 'ZhengXiang',
     "website": "http://www.osbzr.com",
     "category": "Generic Modules",
-    "depends": ['core', 'goods', 'decimal_precision', 'web_sublist', 'web_float_limit', 'report_docx','finance','money'],
+    "depends": ['goods', 'web_float_limit', 'money'],
     "description":
     '''
                         该模块实现了 GoodERP 中 仓库管理的功能。
@@ -39,28 +39,27 @@
                          仓库管理的报表有：
                                   库存余额表；
                                   商品收发明细表；
-                                  批号状态表；
-                                  批号跟踪表；
+                                  批次余额表；
                                   库存调拨；
                                   呆滞料报表。
     ''',
     "data": [
         'data/warehouse_data.xml',
         'security/groups.xml',
+        'security/rules.xml',
         'wizard/save_bom_view.xml',
         'wizard/stock_transceive_wizard_view.xml',
-        'wizard/lot_track_wizard_view.xml',
         'wizard/non_active_report_wizard.xml',
         'view/assets_backend.xml',
         'view/warehouse_view.xml',
         'view/inventory_view.xml',
         'view/production_view.xml',
         'view/res_company.xml',
+        'view/qc_rule.xml',
         'report/report_data.xml',
         'report/stock_balance_view.xml',
         'report/stock_transceive_view.xml',
         'report/lot_status_view.xml',
-        'report/lot_track_view.xml',
         'action/warehouse_action.xml',
         'menu/warehouse_menu.xml',
         'data/sequence.xml',
@@ -69,7 +68,7 @@
     ],
     'demo': [
         'data/warehouse_demo.xml',
-     ],
+    ],
     'installable': True,
     "active": False,
 }

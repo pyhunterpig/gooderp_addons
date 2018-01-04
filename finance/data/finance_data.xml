@@ -34,14 +34,14 @@
             <field name='name'>应收票据</field>
             <field name='costs_types'>assets</field>
             <field name='balance_directions'>in</field>
-            <field name='auxiliary_financing'>partner</field>
+            <field name='auxiliary_financing'>customer</field>
         </record>
         <record id="account_ar" model='finance.account'>
             <field name='code'>1122</field>
             <field name='name'>应收账款</field>
             <field name='costs_types'>assets</field>
             <field name='balance_directions'>in</field>
-            <field name='auxiliary_financing'>partner</field>
+            <field name='auxiliary_financing'>customer</field>
         </record>
         <record id="small_business_chart1123" model='finance.account'>
             <field name='code'>1123</field>
@@ -227,7 +227,7 @@
             <field name='name'>预收账款</field>
             <field name='costs_types'>debt</field>
             <field name='balance_directions'>out</field>
-            <field name='auxiliary_financing'>partner</field>
+            <field name='auxiliary_financing'>customer</field>
         </record>
         <record id="small_business_chart2211001" model='finance.account'>
             <field name='code'>2211001</field>
@@ -244,13 +244,43 @@
         </record>
         <record id="small_business_chart2211003" model='finance.account'>
             <field name='code'>2211003</field>
-            <field name='name'>应付职工薪酬-社会保险费</field>
+            <field name='name'>应付职工薪酬-养老保险费</field>
+            <field name='costs_types'>debt</field>
+            <field name='balance_directions'>out</field>
+        </record>
+        <record id="small_business_chart2211005" model='finance.account'>
+            <field name='code'>2211005</field>
+            <field name='name'>应付职工薪酬-医疗保险费</field>
+            <field name='costs_types'>debt</field>
+            <field name='balance_directions'>out</field>
+        </record>
+        <record id="small_business_chart2211006" model='finance.account'>
+            <field name='code'>2211006</field>
+            <field name='name'>应付职工薪酬-失业保险费</field>
+            <field name='costs_types'>debt</field>
+            <field name='balance_directions'>out</field>
+        </record>
+        <record id="small_business_chart2211007" model='finance.account'>
+            <field name='code'>2211007</field>
+            <field name='name'>应付职工薪酬-生育保险费</field>
+            <field name='costs_types'>debt</field>
+            <field name='balance_directions'>out</field>
+        </record>
+        <record id="small_business_chart2211008" model='finance.account'>
+            <field name='code'>2211008</field>
+            <field name='name'>应付职工薪酬-工伤保险费</field>
             <field name='costs_types'>debt</field>
             <field name='balance_directions'>out</field>
         </record>
         <record id="small_business_chart2211004" model='finance.account'>
             <field name='code'>2211004</field>
             <field name='name'>应付职工薪酬-职工教育经费</field>
+            <field name='costs_types'>debt</field>
+            <field name='balance_directions'>out</field>
+        </record>
+        <record id="small_business_chart2211009" model='finance.account'>
+            <field name='code'>2211009</field>
+            <field name='name'>应付职工薪酬-住房公积金</field>
             <field name='costs_types'>debt</field>
             <field name='balance_directions'>out</field>
         </record>
@@ -299,7 +329,7 @@
         </record>
         <record id="small_business_chart2221001008" model='finance.account'>
             <field name='code'>2221001008</field>
-            <field name='name'>应交税费-增值税-出口抵减内销产品应纳税额</field>
+            <field name='name'>应交税费-增值税-出口抵减内销商品应纳税额</field>
             <field name='costs_types'>debt</field>
             <field name='balance_directions'>out</field>
         </record>
@@ -411,6 +441,12 @@
             <field name='costs_types'>debt</field>
             <field name='balance_directions'>out</field>
         </record>
+                <record id="small_business_chart2221018" model='finance.account'>
+            <field name='code'>2221018</field>
+            <field name='name'>应交税费-印花税</field>
+            <field name='costs_types'>debt</field>
+            <field name='balance_directions'>out</field>
+        </record>
 
         <record id="small_business_chart2231" model='finance.account'>
             <field name='code'>2231</field>
@@ -424,9 +460,27 @@
             <field name='costs_types'>debt</field>
             <field name='balance_directions'>out</field>
         </record>
-        <record id="small_business_chart2241" model='finance.account'>
-            <field name='code'>2241</field>
-            <field name='name'>其他应付款</field>
+        <record id="small_business_chart2241001" model='finance.account'>
+            <field name='code'>2241001</field>
+            <field name='name'>其他应付款-代扣个人养老保险</field>
+            <field name='costs_types'>debt</field>
+            <field name='balance_directions'>out</field>
+        </record>
+        <record id="small_business_chart2241002" model='finance.account'>
+            <field name='code'>2241002</field>
+            <field name='name'>其他应付款-代扣个人医疗保险</field>
+            <field name='costs_types'>debt</field>
+            <field name='balance_directions'>out</field>
+        </record>
+        <record id="small_business_chart2241003" model='finance.account'>
+            <field name='code'>2241003</field>
+            <field name='name'>其他应付款-代扣个人失业保险</field>
+            <field name='costs_types'>debt</field>
+            <field name='balance_directions'>out</field>
+        </record>
+        <record id="small_business_chart2241004" model='finance.account'>
+            <field name='code'>2241004</field>
+            <field name='name'>其他应付款-代扣个人住房公积金</field>
             <field name='costs_types'>debt</field>
             <field name='balance_directions'>out</field>
         </record>
@@ -516,37 +570,37 @@
         <record id="small_business_chart4001001" model='finance.account'>
             <field name='code'>4001001</field>
             <field name='name'>生产成本-基本生产成本</field>
-            <field name='costs_types'>out</field>
+            <field name='costs_types'>cost</field>
             <field name='balance_directions'>in</field>
         </record>
         <record id="small_business_chart4001002" model='finance.account'>
             <field name='code'>4001002</field>
             <field name='name'>生产成本-辅助生产成本</field>
-            <field name='costs_types'>out</field>
+            <field name='costs_types'>cost</field>
             <field name='balance_directions'>in</field>
         </record>
         <record id="small_business_chart4101" model='finance.account'>
             <field name='code'>4101</field>
             <field name='name'>制造费用</field>
-            <field name='costs_types'>out</field>
+            <field name='costs_types'>cost</field>
             <field name='balance_directions'>in</field>
         </record>
         <record id="small_business_chart4301" model='finance.account'>
             <field name='code'>4301</field>
             <field name='name'>研发支出</field>
-            <field name='costs_types'>out</field>
+            <field name='costs_types'>cost</field>
             <field name='balance_directions'>in</field>
         </record>
         <record id="small_business_chart4401" model='finance.account'>
             <field name='code'>4401</field>
             <field name='name'>工程施工</field>
-            <field name='costs_types'>out</field>
+            <field name='costs_types'>cost</field>
             <field name='balance_directions'>in</field>
         </record>
         <record id="small_business_chart4403" model='finance.account'>
             <field name='code'>4403</field>
             <field name='name'>机械作业</field>
-            <field name='costs_types'>out</field>
+            <field name='costs_types'>cost</field>
             <field name='balance_directions'>in</field>
         </record>
         <!-- 损益类 -->
@@ -926,7 +980,7 @@
             <field name="line">5</field>
             <field name='balance'>应收账款</field>
             <field name='line_num'>4</field>
-            <field name='balance_formula'>1122~1122999999</field>
+            <field name='balance_formula'>1122~1122999999;1231~1231999999</field>
             <field name='balance_two'>预收账款</field>
             <field name='line_num_two'>34</field>
             <field name='balance_two_formula'>2203~2203999999</field>
@@ -971,7 +1025,7 @@
             <field name="line">10</field>
             <field name='balance'>存货</field>
             <field name='line_num'>9</field>
-            <field name='balance_formula'>1401~1408999999</field>
+            <field name='balance_formula'>1401~1408999999;4001~4999999999</field>
             <field name='balance_two'>其他应付款</field>
             <field name='line_num_two'>39</field>
             <field name='balance_two_formula'>2241~2241999999</field>
@@ -986,8 +1040,9 @@
         </record>
         <record id='bs_11' model='balance.sheet'>
             <field name="line">12</field>
-            <field name='balance'>在产品</field>
+            <field name='balance'>在商品</field>
             <field name='line_num'>11</field>
+            <field name='balance_formula'>4001~4999999999</field>
             <field name='balance_two'>流动负债合计</field>
             <field name='line_num_two'>41</field>
             <field name='balance_two_formula'>2001~2241999999</field>
@@ -1021,7 +1076,7 @@
             <field name="line">16</field>
             <field name='balance'>流动资产合计</field>
             <field name='line_num'>15</field>
-            <field name='balance_formula'>1001~1421999999</field>
+            <field name='balance_formula'>1001~1421999999;4001~4999999999</field>
             <field name='balance_two'>递延收益</field>
             <field name='line_num_two'>44</field>
             <field name='balance_two_formula'>2401~2401999999</field>
@@ -1106,6 +1161,7 @@
         <record id='bs_26' model='balance.sheet'>
             <field name="line">28</field>
             <field name='balance'>开发支出</field>
+            <field name='balance_formula'>4301~4301999999</field>
             <field name='line_num'>26</field>
             <field name='balance_two'>资本公积</field>
             <field name='line_num_two'>49</field>
@@ -1142,7 +1198,7 @@
             <field name="line">32</field>
             <field name='balance'>资产总计</field>
             <field name='line_num'>30</field>
-            <field name='balance_formula'>1001~1901999999</field>
+            <field name='balance_formula'>1001~1901999999;4001~4999999999</field>
             <field name='balance_two'>负债和所有者权益（或股东权益）总计</field>
             <field name='line_num_two'>53</field>
             <field name='balance_two_formula'>2001~3104999999</field>
@@ -1176,7 +1232,7 @@
         </record>
         <record id='pl_6' model='profit.statement'>
             <field name='balance'>城市维护建设税</field>
-            <field name='line_num'>5</field>
+            <field name='line_num'>6</field>
             <field name='occurrence_balance_formula'>2221006</field>
         </record>
         <record id='pl_7' model='profit.statement'>
@@ -1288,6 +1344,32 @@
 			<field name="account_id" ref="small_business_chart5603003"/>
             <field name='note'>由系统创建</field>
 		</record>
+
+        <!--收发类别-->
+        <!-- 销售发货 借方科目：主营业务成本-->
+        <record id="categ_sell_goods" model="core.category">
+            <field name="name">销售发货</field>
+            <field name="type">finance</field>
+            <field name="account_id" ref="finance.account_cost"/>
+        </record>
+        <!-- 组装单、拆卸单 借方科目：生产成本-基本生产成本 -->
+        <record id="categ_ass_disass" model="core.category">
+            <field name="name">生产</field>
+            <field name="type">finance</field>
+            <field name="account_id" ref="finance.small_business_chart4001001"/>
+        </record>
+        <!-- 委外 借方科目： -->
+        <record id="categ_outsource" model="core.category">
+            <field name="name">委外</field>
+            <field name="type">finance</field>
+            <field name="account_id" ref="finance.small_business_chart1408"/>
+        </record>
+        <!-- 采购入库凭证 贷方科目：材料采购-->
+        <record id="categ_buy_goods" model="core.category">
+            <field name="name">采购入库</field>
+            <field name="type">finance</field>
+            <field name="account_id" ref="finance.small_business_chart1401"/>
+        </record>
 
     </data>
 </openerp>

@@ -7,17 +7,21 @@
             <field name="name">buy.receipt.tree</field>
             <field name="model">buy.receipt</field>
             <field name="arch" type="xml">
-                <tree string="采购入库单">
+                <tree string="采购入库单" colors='blue:state == "draft";lightgray:state == "cancel"'>
                     <field name='date'/>
             		<field name='name'/>
-            		<field name="order_id"/>
+                    <field name="order_id" groups='buy.buy_groups'/>
                     <field name="partner_id"/>
-                    <field name="amount"/>
+                    <field name="user_id"/>
+                    <field name="amount" sum="总金额"/>
             		<field name='payment'/>
             		<field name='date_due'/>
                     <field name="create_uid" string="制单人"/>
                     <field name="approve_uid"/>
+                    <field name='currency_id'
+                           groups='finance.group_multi_currency'/>
                     <field name='state'/>
+                    <field name="_approve_state"/>
             		<field name='money_state'/>
                 </tree>
             </field>
@@ -29,8 +33,10 @@
             <field name="arch" type="xml">
                 <form string="采购入库单">
                 <header>
+                    <button name='buy_to_return' type='object' states="done" string='生成退货单' class="oe_highlight"/>
                 	<button name="buy_receipt_done" states="draft" string="审核" type="object" class="oe_highlight"/>
                 	<button name="buy_receipt_draft" states="done" string="反审核" type="object"/>
+                    <button name="action_cancel" states="draft" string="作废" type="object"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,done" readonly="1"/>
                 </header>
                 <sheet>
@@ -44,17 +50,23 @@
                             	attrs="{'readonly': [('state','!=','draft')]}"
                             	domain="[('s_category_id', '!=', False)]"
                             	context="{'form_view_ref': 'core.supplier_address_form'}"/>
+                            <field name='user_id'
+                                   options="{'no_open': True, 'no_create': True}"/>
                             <field name="date" required="1" attrs="{'readonly': [('state','!=','draft')]}"/>
                             <field name="is_return" readonly="1" invisible="1"/>
                             <field name="warehouse_dest_id"/>
                             <field name="invoice_by_receipt" invisible="1"></field>
+                            <field name="finance_category_id" invisible="1"/>
                         </group>
                         <group>
+                            <field name="ref"/>
                         	<field name="date_due" required="1" attrs="{'readonly': [('state','!=','draft')]}"/>
-                            <field name="order_id" readonly="1"/>
-                            <field name='invoice_id' readonly='1'/>
-                            <field name='voucher_id'/>
-                            <field name="money_state" readonly='1'/>
+                            <field name="order_id" readonly="1" groups='buy.buy_groups'/>
+                            <field name='invoice_id' readonly='1' groups='base.group_no_one'/>
+                            <field name='voucher_id' groups='base.group_no_one'/>
+                            <field name="money_state" readonly='1' groups='base.group_no_one'/>
+                            <field name='currency_id' readonly='1'
+                                   groups='finance.group_multi_currency'/>
                             <field name="modifying" invisible="1"/>
                         </group>
                     </group>
@@ -74,26 +86,31 @@
 		                            	attrs="{'required': [('using_attribute','=', True)], 'readonly': [('using_attribute','!=', True)],}"/>
 		                            <field name='lot' groups='goods.batch_groups'
 											attrs="{'readonly': [('using_batch', '=', False)], 'required': [('using_batch', '=', True)]}"/>
+                                    <field name='location_id' groups="warehouse.multi_location_groups" options="{'no_open': True, 'no_create': True}"/>
 		                            <field name="goods_uos_qty" sum="合计辅助数量"
 		                            	groups="goods.auxiliary_unit_groups"/>
 		                            <field name='uos_id' groups='goods.auxiliary_unit_groups' />
 		                            <field name="goods_qty" sum="合计数量"/>
 		                            <field name="uom_id"/>
-		                            <field name="price"/>
+		                            <field name="price" groups='goods.view_cost_groups'/>
 		                            <field name="price_taxed" groups='buy.in_tax_groups'/>
-				 					<field name='cost_unit'/>
 		                            <field name="discount_rate" groups='buy.buy_line_discount_groups'/>
 		                            <field name="discount_amount" groups='buy.buy_line_discount_groups' readonly="0" sum="合计折扣额"/>
-		                            <field name="amount" string="购货金额" sum="合计金额"/>
+		                            <field name="amount" string="购货金额" sum="合计金额" groups='goods.view_cost_groups'/>
 		                            <field name="tax_rate" groups='buy.in_tax_groups'/>
 		                            <field name="tax_amount" sum="合计税额" groups='buy.in_tax_groups'/>
 		                            <field name="subtotal" sum="价税合计的合计" groups='buy.in_tax_groups'/>
+                                    <field name='expiration_date' groups='warehouse.group_expiration_date' />
+		                            <field name='line_net_weight' sum="净重合计" groups="warehouse.manager_net_weight_group"/>
+                                    <field name="cost" invisible="1"/>
+                                    <field name="cost_unit" invisible="1"/>
 		                            <field name="note"/>
 		                            <field name="share_cost"/>
 		                            <field name="type" invisible="1"/>
 		                            <field name='using_attribute' invisible='1'/>
 		                            <field name='using_batch' invisible='1'/>
 				                    <field name='force_batch_one' invisible='1'/>
+                                    <field name='buy_line_id' invisible='1'/>
 		                        </tree>
 		                    </field>
 		                </page>
@@ -115,7 +132,14 @@
 		            </notebook>
                     <field name="note" placeholder="暂无备注信息" attrs="{'readonly': [('state','!=','draft')]}"/>
                     <group>
+                        <field name='qc_result' widget='pdf_viewer'
+                               attrs="{'readonly': [('state', '!=', 'draft')]}"
+                               groups='warehouse.group_qc'
+                        />
+                    </group>
+                    <group>
                         <group>
+                            <field name='delivery_fee'/>
                             <field name="discount_amount" groups='buy.buy_discount_groups'
                             string="抹零"/>
                             <field name="amount"/>
@@ -125,7 +149,6 @@
                                                 'invisible': [('invoice_by_receipt','=',False)]}"/>
                             <field name="bank_account_id" attrs="{'readonly': [('state','!=','draft')],
                                                         'invisible': [('invoice_by_receipt','=',False)]}"/>
-                            <field name="debt"/>
                         </group>
                     </group>
                     <group>
@@ -140,9 +163,10 @@
                     </group>
                 </sheet>
                 <div class="oe_chatter">
-                    <field name="message_follower_ids" widget="mail_followers"/>
-                    <field name="message_ids" widget="mail_thread"/>
-                </div>
+	                    <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="_to_approver_ids" widget="goodprocess" readonly="1"/>
+	                    <field name="message_ids" widget="mail_thread"/>
+	            </div>
                 </form>
             </field>
         </record>
@@ -153,7 +177,7 @@
             <field name="arch" type="xml">
                 <search string="采购入库单">
                     <field name="name"/>
-                    <field name="order_id"/>
+                    <field name="order_id" groups='buy.buy_groups'/>
                     <field name="partner_id"/>
                     <field name="state"/>
                     <field name="money_state"/>
@@ -180,17 +204,20 @@
             <field name="name">buy.return.tree</field>
             <field name="model">buy.receipt</field>
             <field name="arch" type="xml">
-                <tree string="采购退货单">
+                <tree string="采购退货单" colors='blue:state == "draft";lightgray:state == "cancel"'>
                     <field name='date'/>
             		<field name='name'/>
-            		<field name="order_id"/>
+                    <field name="order_id" groups='buy.buy_groups'/>
                     <field name="partner_id"/>
-                    <field name="amount"/>
+                    <field name="amount" sum="总金额"/>
             		<field name='payment'/>
             		<field name='date_due'/>
                     <field name="create_uid" string="制单人"/>
                     <field name="approve_uid"/>
+                    <field name='currency_id'
+                           groups='finance.group_multi_currency'/>
                     <field name='state'/>
+                    <field name="_approve_state"/>
             		<field name='return_state'/>
                 </tree>
             </field>
@@ -204,6 +231,7 @@
                 <header>
                 	<button name="buy_receipt_done" states="draft" string="审核" type="object" class="oe_highlight"/>
                 	<button name="buy_receipt_draft" states="done" string="反审核" type="object"/>
+                     <button name="action_cancel" states="draft" string="作废" type="object"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,done" readonly="1"/>
                 </header>
                 <sheet>
@@ -217,16 +245,21 @@
                             	attrs="{'readonly': [('state','!=','draft')]}"
                             	domain="[('s_category_id', '!=', False)]"
                             	context="{'form_view_ref': 'core.supplier_address_form'}"/>
+                            <field name='user_id'
+                                   options="{'no_open': True, 'no_create': True}"/>
                             <field name="date" required="1" attrs="{'readonly': [('state','!=','draft')]}"/>
                             <field name="is_return" readonly="1" invisible="1"/>
                             <field name="warehouse_id"/>
                         </group>
                         <group>
                         	<field name="date_due" required="1" attrs="{'readonly': [('state','!=','draft')]}"/>
-                            <field name="order_id" readonly="1"/>
+                            <field name="order_id" readonly="1" groups='buy.buy_groups'/>
+                            <field name='origin_id' readonly='1'/>
                             <field name='invoice_id' readonly='1'/>
                             <field name='voucher_id'/>
                             <field name="return_state" readonly="1"/>
+                            <field name='currency_id' readonly='1'
+                                   groups='finance.group_multi_currency'/>
                             <field name="modifying" invisible="1"/>
                         </group>
                     </group>
@@ -262,6 +295,10 @@
 		                            <field name="tax_rate" groups='buy.in_tax_groups'/>
 		                            <field name="tax_amount" sum="合计税额" groups='buy.in_tax_groups'/>
 		                            <field name="subtotal" sum="价税合计的合计" groups='buy.in_tax_groups'/>
+                                    <field name='expiration_date'
+                                           readonly='1'
+                                           groups='warehouse.group_expiration_date' />
+		                            <field name='line_net_weight' sum="净重合计" groups="warehouse.manager_net_weight_group"/>
 		                            <field name="note"/>
 		                            <field name="type" invisible="1"/>
 		                            <field name='using_attribute' invisible='1'/>
@@ -286,15 +323,19 @@
 		            </notebook>
                     <field name="note" placeholder="暂无备注信息" attrs="{'readonly': [('state','!=','draft')]}"/>
                     <group>
+                        <field name='qc_result' widget='pdf_viewer'
+                               attrs="{'readonly': [('state', '!=', 'draft')]}"
+                               groups='warehouse.group_qc'
+                        />
+                    </group>
+                    <group>
                         <group>
-                            <field name="discount_rate" groups='buy.buy_discount_groups' attrs="{'readonly': [('state','!=','draft')]}"/>
                             <field name="discount_amount" groups='buy.buy_discount_groups'/>
                             <field name="amount"/>
                         </group>
                         <group>
                         	<field name="payment" attrs="{'readonly': [('state','!=','draft')]}"/>
                             <field name="bank_account_id" attrs="{'readonly': [('state','!=','draft')]}"/>
-                            <field name="debt"/>
                         </group>
                     </group>
                     <group>
@@ -309,9 +350,10 @@
                     </group>
                 </sheet>
                 <div class="oe_chatter">
-                    <field name="message_follower_ids" widget="mail_followers"/>
-                    <field name="message_ids" widget="mail_thread"/>
-                </div>
+	                    <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="_to_approver_ids" widget="goodprocess" readonly="1"/>
+	                    <field name="message_ids" widget="mail_thread"/>
+	            </div>
                 </form>
             </field>
         </record>
@@ -322,7 +364,7 @@
             <field name="arch" type="xml">
                 <search string="采购退货单">
                     <field name="name"/>
-                    <field name="order_id"/>
+                    <field name="order_id" groups='buy.buy_groups'/>
                     <field name="partner_id"/>
                     <field name="state"/>
                     <field name="return_state"/>

@@ -5,15 +5,17 @@
 			<field name='name'>goods.tree</field>
 			<field name='model'>goods</field>
 			<field name='arch' type='xml'>
-				<tree string='产品'>
+				<tree string='商品'>
 					<field name='code' />
 					<field name='name' />
+					<field name='brand'/>
 					<field name='category_id' />
 					<field name='uom_id' />
 					<field name='uos_id' groups='goods.auxiliary_unit_groups' />
 					<field name='conversion' string='转化率' groups='goods.auxiliary_unit_groups' />
 					<field name='cost' groups='goods.view_cost_groups'/>
 					<field name='price' />
+					<field name='active'  invisible='1'/>
 				</tree>
 			</field>
 		</record>
@@ -21,12 +23,15 @@
 			<field name='name'>goods.form</field>
 			<field name='model'>goods</field>
 			<field name='arch' type='xml'>
-				<form string='产品'>
+				<form string='商品'>
 					<sheet>
                 		<group>
-							<group>
+							<group name="general_info">
 							    <field name='code'/>
 								<field name='name' required='1'/>
+								<field name='not_saleable'/>
+								<field name='brand'/>
+								<field name='goods_class_id'/>
 								<field name='category_id'/>
 								<field name='uom_id' required='1' />
 								<field name='uos_id' groups='goods.auxiliary_unit_groups' required='1'/>
@@ -35,28 +40,29 @@
 								<field name='barcode' />
 								<field name='note'/>
 							</group>
-							<group>
+							<group name="image_info">
 	            				<div>
 	            					<field name='image' widget='image'
-	            						options='{"preview_image": "image", "size": [300, 300]}'/>
+	            						options='{"preview_image": "image", "width": "100%"}'/>
 	            				</div>
 							</group>
                 		</group>
 						<notebook>
-							<page string='高级'>
+							<page name="advanced_info" string='高级'>
 								<group>
-									<group>
+									<group name="price_info">
 									    <field name='price'/>
 										<field name='cost' groups='goods.view_cost_groups'/>
+										<field name='cost_method' groups='goods.view_cost_groups'/>
 										<field name='supplier_id' context="{'form_view_ref': 'core.supplier_address_form'}" groups='goods.view_cost_groups'/>
 									</group>
-									<group>
+									<group name="warehouse_info">
 									    <field name='no_stock' groups='goods.no_stock_groups'/>
 										<field name='using_batch' groups='goods.batch_groups'/>
 										<field name='force_batch_one' attrs="{'invisible': [('using_batch', '=', False)]}"
 										groups='goods.batch_serial_groups' />
-										<field name='attribute_ids' colspan="2" nolabel='1' groups='goods.multi_attrs_groups'/>
 									</group>
+									<field name='attribute_ids' colspan="2" nolabel='1' groups='goods.multi_attrs_groups'/>
 								</group>
 							</page>
 						</notebook>
@@ -68,12 +74,13 @@
 			<field name='name'>goods.search</field>
 			<field name='model'>goods</field>
 			<field name='arch' type='xml'>
-				<search string='产品'>
+				<search string='商品'>
 					<field name='name'/>
+					<field name='brand'/>
 					<field name='code'/>
 					<field name='category_id'/>
 					<group expand="0" string="分组">
-                        <filter string="产品类别" domain="[]" context="{'group_by':'category_id'}"/>
+                        <filter string="商品类别" domain="[]" context="{'group_by':'category_id'}"/>
                     </group>
 				</search>
 			</field>
@@ -83,9 +90,11 @@
 			<field name='model'>attribute</field>
 			<field name='arch' type='xml'>
 				<form string='属性'>
+					<div>
+						<label for='ean'/>
+						<field name='ean'/>
+					</div>
 					<field name='name'/>
-					<label for='ean'/>
-					<field name='ean'/>
 					<field name='value_ids'>
 						<tree editable='TOP' string='属性值'>
 							<field name='category_id'/>

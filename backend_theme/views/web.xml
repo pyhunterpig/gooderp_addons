@@ -6,6 +6,29 @@
 -->
 
 <odoo>
+    <template id="left_menu">
+        <t t-set="debug_param" t-value="'?debug=%s'%debug if debug else ''"/>
+        <t t-if="len(menu_data['children'])>1">
+            <div id="left_menu"  class="hidden-print big_show">
+                <div t-foreach="menu_data['children']" t-as="menu"  >
+                    <a t-att-href="'/web%s#menu_id=%s&amp;action=%s' % (debug_param, menu['id'], menu['action'] and menu['action'].split(',')[1] or '')"
+                        t-att-class="'oe_menu_toggler' if menu.get('children') else 'oe_menu_leaf'"
+                        t-att-data-menu="menu['id']"
+                        t-att-data-menu-xmlid="menu.get('xmlid')"
+                        t-att-data-action-model="menu['action'] and menu['action'].split(',')[0] or None"
+                        t-att-data-action-id="menu['action'] and menu['action'].split(',')[1] or None">
+                        <img style="max-width:60px;" t-attf-src="/web/image/ir.ui.menu/{{ menu['id'] }}/web_icon_data" 
+                           t-att-alt="menu['name']"
+                           t-att-title="menu['name']"
+                           class="img-rounded" />
+                        <p class="app-drawer-title text-center" style="font-weight:bold;margin: 6px 10px 12px 10px;">
+                            <t t-esc="menu['name']" />
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </t>
+    </template>
 
     <template id="webclient_bootstrap"
               inherit_id="web.webclient_bootstrap"
@@ -37,17 +60,19 @@
                      groups="base.group_user,base.group_portal"
                      >
                     <div class="container-fluid">
-
+                        <a class="o_sub_menu_logo">
+                            <img src="/web/static/src/img/logo.png"/>
+                        </a>
                         <div class="navbar-header">
-
+                            <!--
                             <a href="#"
-                               class="drawer-toggle navbar-collapse collapse btn btn-default app-drawer-toggle"
+                               class="drawer-toggle navbar-collapse collapse btn btn-default app-drawer-toggle  small_show"
                                accesskey="A"
                                >
                                 <span class="sr-only">Toggle App Drawer</span>
                                 <i class="fa fa-th fa-lg app-drawer-icon-open" />
                             </a>
-
+                            -->
                             <button type="button"
                                     class="app-drawer-toggle drawer-toggle pull-left navbar-toggle collapsed"
                                     >
@@ -92,7 +117,9 @@
             </header>
 
         </xpath>
-
+        <xpath expr="//div[@class='o_main_content']" position="before" >
+          <t t-call="backend_theme.left_menu"/>
+        </xpath>
     </template>
 
     <template id="menu_secondary"
@@ -100,7 +127,8 @@
               name="App Drawer - Secondary Menu"
               >
 
-        <xpath expr="//a[@class='o_sub_menu_logo']" position="replace" />
+        <xpath expr="//a[@class='o_sub_menu_logo']" position="replace" >
+        </xpath>
 
         <xpath expr="//div[@class='o_sub_menu_footer']" position="replace" />
 
@@ -212,11 +240,11 @@
         <xpath expr="//ul[contains(@class, 'oe_application_menu_placeholder')]" position="replace">
 
             <div class="panel-default app-drawer-app-panel" id="appDrawerAppMenu">
-                <div class="panel-heading" id="appDrawerAppPanelHead">
+                <div class="theme-panel-heading" id="appDrawerAppPanelHead">
                     <h4 class="app-drawer-panel-title">
                         <a href="#" class="app-drawer-icon-close drawer-toggle">
                             <i class="fa fa-lg fa-chevron-left" />
-                            Apps
+                            应用
                         </a>
                     </h4>
                 </div>
@@ -238,5 +266,7 @@
             </div>
         </xpath>
     </template>
+
+    
 
 </odoo>

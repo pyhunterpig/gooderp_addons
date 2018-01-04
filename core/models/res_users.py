@@ -3,14 +3,22 @@
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-class res_users(models.Model):
+
+class ResUsers(models.Model):
     _inherit = 'res.users'
 
     employee_ids = fields.One2many('staff', 'user_id', u'对应员工')
 
+    @api.model
+    def create(self, vals):
+        vals.update({
+            'email': '@'
+        })
+        return super(ResUsers, self).create(vals)
+
     @api.multi
     def write(self, vals):
-        res = super(res_users, self).write(vals)
+        res = super(ResUsers, self).write(vals)
         # 如果普通用户修改管理员，则报错
         if self.env.user.id != 1:
             for record in self:

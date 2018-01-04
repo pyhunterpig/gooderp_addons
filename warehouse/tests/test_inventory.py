@@ -7,7 +7,8 @@ class TestInventory(TransactionCase):
     def setUp(self):
         super(TestInventory, self).setUp()
 
-        self.env.ref('core.goods_category_1').account_id = self.env.ref('finance.account_goods').id
+        self.env.ref('core.goods_category_1').account_id = self.env.ref(
+            'finance.account_goods').id
         self.env.ref('warehouse.wh_in_whin1').date = '2016-02-06'
         self.env.ref('warehouse.wh_in_whin3').date = '2016-02-06'
 
@@ -17,7 +18,7 @@ class TestInventory(TransactionCase):
         self.goods_mouse = self.browse_ref('goods.mouse')
         self.sh_warehouse = self.browse_ref('warehouse.sh_stock')
 
-        # 创建一个临时的一个库存调拨，将1个产品调拨到上海仓库
+        # 创建一个临时的一个库存调拨，将1个商品调拨到上海仓库
         self.temp_mouse_in = self.env['wh.move.line'].with_context({
             'type': 'in',
         }).create({
@@ -32,7 +33,7 @@ class TestInventory(TransactionCase):
             'lot': 'MOUSE0001',
         })
 
-        # 产品     实际数量 实际辅助数量
+        # 商品     实际数量 实际辅助数量
         # 键鼠套装  96     2
         # 鼠标     1      1
         # 网线     48     1
@@ -49,7 +50,7 @@ class TestInventory(TransactionCase):
             'uos_id': self.goods_mouse.uos_id.id,
             'warehouse_dest_id': self.sh_warehouse.id,
             'goods_qty': 0,
-            'goods_uos_qty': 1,
+            'goods_uos_qty': 0,
             'cost_unit': 30,
             'lot': 'MOUSE0002',
         })
@@ -57,16 +58,20 @@ class TestInventory(TransactionCase):
         self.temp_mouse_in_zero_qty.action_done()
 
         self.inventory = self.env['wh.inventory'].create({
-                'warehouse_id': self.browse_ref('warehouse.hd_stock').id,
-                })
+            'warehouse_id': self.browse_ref('warehouse.hd_stock').id,
+        })
         self.inventory.query_inventory()
 
     def test_query_inventory(self):
-        # 盘点单查询的结果必须和每个产品单据查询的结果一致
+        # 盘点单查询的结果必须和每个商品单据查询的结果一致
         for line in self.inventory.line_ids:
             goods_stock = line.goods_id.get_stock_qty()[0]
-            self.assertEqual(goods_stock.get('warehouse'), line.warehouse_id.name)
-            self.assertEqual(goods_stock.get('qty'), line.real_qty)
+            self.assertEqual(goods_stock.get('warehouse'),
+                             line.warehouse_id.name)
+            if line.goods_id.name == u'网线':  # 网线在途移库 120个，盘点时应减去
+                self.assertEqual(goods_stock.get('qty') - 120, line.real_qty)
+            else:
+                self.assertEqual(goods_stock.get('qty'), line.real_qty)
 
         # 当指定仓库的时候，选择的行必须是该仓库的
         self.inventory.warehouse_id = self.sh_warehouse
@@ -74,14 +79,25 @@ class TestInventory(TransactionCase):
         for line in self.inventory.line_ids:
             self.assertEqual(line.warehouse_id, self.sh_warehouse)
 
-        # 指定产品的时候，选择的行必须是该产品的
-        self.inventory.goods = u'鼠标'
+        # 指定商品的时候，选择的行必须是该商品的
+        self.inventory.goods = [4, self.goods_mouse.id]  # u'鼠标'
         self.inventory.query_inventory()
         for line in self.inventory.line_ids:
             self.assertEqual(line.goods_id.name, u'鼠标')
 
         self.inventory.unlink()
         self.assertTrue(not self.inventory.exists())
+
+    def test_query_inventory_transfer_order(self):
+        '''盘点单查询的盘点数量不应该包含移库在途的,在途移库数量恰好等于仓库中数量'''
+        internal_order = self.env.ref('warehouse.wh_internal_whint0')
+        for line in internal_order.line_out_ids:
+            line.goods_qty = 48
+        inventory = self.env['wh.inventory'].create({
+            'warehouse_id': self.browse_ref('warehouse.hd_stock').id,
+            'goods': u'网线',
+        })
+        inventory.query_inventory()
 
     def test_generate_inventory(self):
         for line in self.inventory.line_ids:
@@ -108,33 +124,19 @@ class TestInventory(TransactionCase):
         self.assertEqual(mouse.difference_qty, 1)
         self.assertEqual(mouse.lot_type, 'in')
 
-        # 对于强制为1的产品，只能添加或减少一个产品
+        # 对于强制为1的商品，只能添加或减少一个商品
         warning = {'warning': {
             'title': u'警告',
-            'message': u'产品上设置了序号为1，此时一次只能盘亏或盘盈一个产品数量',
+            'message': u'商品上设置了序号为1，此时一次只能盘亏或盘盈一个商品数量',
         }}
         mouse.inventory_qty = mouse.real_qty + 2
-        self.assertEqual(mouse.onchange_qty(), warning)
-
-        # 盘盈盘亏数量和辅助单位数量的盈亏方向应该一致
-        warning = {'warning': {
-            'title': u'错误',
-            'message': u'盘盈盘亏数量应该与辅助单位的盘盈盘亏数量盈亏方向一致',
-        }}
-        mouse.inventory_qty = mouse.real_qty - 1
-        mouse.inventory_uos_qty = mouse.real_uos_qty + 1
         self.assertEqual(mouse.onchange_qty(), warning)
 
         # 实际辅助数量改变的时候，实际数量应该跟着改变
         mouse.inventory_uos_qty = mouse.real_uos_qty + 1
         mouse.onchange_uos_qty()
-        self.assertEqual(mouse.goods_id.conversion_unit(mouse.inventory_uos_qty), mouse.inventory_qty)
-
-        # 盘盈盘亏数量与辅助单位的盘盈盘亏数量盈亏方向不一致的时候，此时没法生成盘盈盘亏单据
-        mouse.difference_qty = -1
-        mouse.difference_uos_qty = 1
-        with self.assertRaises(UserError):
-            self.inventory.generate_inventory()
+        self.assertEqual(mouse.goods_id.conversion_unit(
+            mouse.inventory_uos_qty), mouse.inventory_qty)
 
         mouse.line_role_back()
         mouse.inventory_qty = mouse.real_qty + 1
@@ -147,9 +149,11 @@ class TestInventory(TransactionCase):
         self.assertTrue(self.inventory.out_id)
         self.assertTrue(self.inventory.in_id)
 
-        # 验证产品
-        self.assertEqual(self.inventory.out_id.line_out_ids.goods_id, cable.goods_id)
-        self.assertEqual(self.inventory.in_id.line_in_ids.goods_id, mouse.goods_id)
+        # 验证商品
+        self.assertEqual(
+            self.inventory.out_id.line_out_ids.goods_id, cable.goods_id)
+        self.assertEqual(
+            self.inventory.in_id.line_in_ids.goods_id, mouse.goods_id)
 
         # 验证数量
         self.assertEqual(self.inventory.out_id.line_out_ids.goods_qty, 1)
@@ -198,3 +202,10 @@ class TestInventory(TransactionCase):
         '''盘盈盘亏产生的入库单和出库单审核时检查'''
         self.inventory.query_inventory()
         self.inventory.generate_inventory()
+
+    def test_inventory_get_default_warehouse(self):
+        ''' 测试 获取盘点仓库 '''
+        self.env['wh.inventory'].create({
+            'date': '2016-12-30',
+            'goods': '鼠标',
+        })

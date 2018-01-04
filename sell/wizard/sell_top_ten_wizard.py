@@ -5,7 +5,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 
 
-class sell_top_ten_wizard(models.TransientModel):
+class SellTopTenWizard(models.TransientModel):
     _name = 'sell.top.ten.wizard'
     _description = u'销量前十商品向导'
 
@@ -24,13 +24,19 @@ class sell_top_ten_wizard(models.TransientModel):
     date_end = fields.Date(u'结束日期', default=_default_date_end,
                            help=u'报表汇总的结束日期，默认为当前日期')
     warehouse_id = fields.Many2one('warehouse', u'仓库',
-                                   help=u'按指定仓库进行统计')
+                                   help=u'只统计选定的仓库')
+    company_id = fields.Many2one(
+        'res.company',
+        string=u'公司',
+        change_default=True,
+        default=lambda self: self.env['res.company']._company_default_get())
 
     @api.multi
     def button_ok(self):
         self.ensure_one()
         if self.date_end < self.date_start:
-            raise UserError(u'开始日期不能大于结束日期！\n 所选的开始日期:%s 结束日期:%s' % (self.date_start, self.date_end))
+            raise UserError(u'开始日期不能大于结束日期！\n 所选的开始日期:%s 结束日期:%s' %
+                            (self.date_start, self.date_end))
 
         return {
             'name': u'销量前十商品',

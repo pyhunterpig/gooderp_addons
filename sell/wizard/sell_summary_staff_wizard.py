@@ -5,7 +5,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 
 
-class sell_summary_staff_wizard(models.TransientModel):
+class SellSummaryStaffWizard(models.TransientModel):
     _name = 'sell.summary.staff.wizard'
     _description = u'销售汇总表（按销售人员）向导'
 
@@ -21,23 +21,29 @@ class sell_summary_staff_wizard(models.TransientModel):
                              help=u'报表汇总的开始日期，默认为公司启用日期')
     date_end = fields.Date(u'结束日期', default=_default_date_end,
                            help=u'报表汇总的结束日期，默认为当前日期')
-    staff_id = fields.Many2one('staff', u'销售人员',
-                               help=u'按指定销售员进行统计')
+    user_id = fields.Many2one('res.users', u'销售员',
+                              help=u'只统计选定的销售员')
     goods_id = fields.Many2one('goods', u'商品',
-                               help=u'按指定商品进行统计')
+                               help=u'只统计选定的商品')
     goods_categ_id = fields.Many2one('core.category', u'商品类别',
                                      domain=[('type', '=', 'goods')],
                                      context={'type': 'goods'},
-                                     help=u'按指定商品类别进行统计')
+                                     help=u'只统计选定的商品类别')
     warehouse_id = fields.Many2one('warehouse', u'仓库',
-                                   help=u'按指定仓库进行统计')
+                                   help=u'只统计选定的仓库')
+    company_id = fields.Many2one(
+        'res.company',
+        string=u'公司',
+        change_default=True,
+        default=lambda self: self.env['res.company']._company_default_get())
 
     @api.multi
     def button_ok(self):
         self.ensure_one()
         if self.date_end < self.date_start:
-            raise UserError(u'开始日期不能大于结束日期！\n 所选的开始日期:%s 结束日期:%s' % (self.date_start, self.date_end))
-        read_fields = ['date_start', 'date_end', 'staff_id',
+            raise UserError(u'开始日期不能大于结束日期！\n 所选的开始日期:%s 结束日期:%s' %
+                            (self.date_start, self.date_end))
+        read_fields = ['date_start', 'date_end', 'user_id',
                        'goods_id', 'goods_categ_id', 'warehouse_id']
         return {
             'name': u'销售汇总表（按销售人员）',

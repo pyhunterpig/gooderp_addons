@@ -5,7 +5,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 
 
-class buy_payment_wizard(models.TransientModel):
+class BuyPaymentWizard(models.TransientModel):
     _name = 'buy.payment.wizard'
     _description = u'采购付款一览表向导'
 
@@ -20,15 +20,20 @@ class buy_payment_wizard(models.TransientModel):
     date_start = fields.Date(u'开始日期', default=_default_date_start,
                              help=u'报表汇总的开始日期，默认为公司启用日期')
     date_end = fields.Date(u'结束日期', default=_default_date_end,
-                             help=u'报表汇总的结束日期，默认为当前日期')
+                           help=u'报表汇总的结束日期，默认为当前日期')
     s_category_id = fields.Many2one('core.category', u'供应商类别',
-                             help=u'按指定供应商类别进行统计')
+                                    help=u'只统计选定的供应商类别')
     partner_id = fields.Many2one('partner', u'供应商',
-                             help=u'按指定供应商进行统计')
+                                 help=u'只统计选定的供应商')
     order_id = fields.Many2one('buy.receipt', u'采购单号',
-                             help=u'按指定采购单号进行统计')
+                               help=u'只统计选定的采购单号')
     warehouse_dest_id = fields.Many2one('warehouse', u'仓库',
-                             help=u'按指定仓库进行统计')
+                                        help=u'只统计选定的仓库')
+    company_id = fields.Many2one(
+        'res.company',
+        string=u'公司',
+        change_default=True,
+        default=lambda self: self.env['res.company']._company_default_get())
 
     def _get_domain(self):
         '''返回wizard界面上条件'''
@@ -44,7 +49,7 @@ class buy_payment_wizard(models.TransientModel):
         if self.order_id:
             cond.append(('id', '=', self.order_id.id))
         if self.warehouse_dest_id:
-            cond += ['|',('buy_move_id.warehouse_dest_id', '=', self.warehouse_dest_id.id),
+            cond += ['|', ('buy_move_id.warehouse_dest_id', '=', self.warehouse_dest_id.id),
                      ('buy_move_id.warehouse_id', '=', self.warehouse_dest_id.id)]
         return cond
 
@@ -52,7 +57,7 @@ class buy_payment_wizard(models.TransientModel):
         '''计算该入库单的已付款和应付款余额'''
         payment = 0
         for order in self.env['money.order'].search(
-                    [('state', '=', 'done')], order='name'):
+                [('state', '=', 'done')], order='name'):
             for source in order.source_ids:
                 if source.name.name == receipt.name:
                     payment += source.this_reconcile
@@ -66,7 +71,7 @@ class buy_payment_wizard(models.TransientModel):
     def _prepare_buy_payment(self, receipt):
         '''对于传入的入库单，为创建采购付款一览表准备数据'''
         self.ensure_one()
-        factor = not receipt.is_return and 1 or -1 # 如果是退货则金额均取反
+        factor = not receipt.is_return and 1 or -1  # 如果是退货则金额均取反
         purchase_amount = factor * (receipt.discount_amount + receipt.amount)
         discount_amount = factor * receipt.discount_amount
         amount = factor * receipt.amount
@@ -96,21 +101,12 @@ class buy_payment_wizard(models.TransientModel):
             raise UserError(u'开始日期不能大于结束日期！')
 
         receipt_obj = self.env['buy.receipt']
-        count = sum_payment_rate = 0    # 行数及所有行的付款率之和
         for receipt in receipt_obj.search(self._get_domain(), order='partner_id,date'):
             # 用查找到的入库单信息来创建一览表
-            line = self.env['buy.payment'].create(self._prepare_buy_payment(receipt))
+            line = self.env['buy.payment'].create(
+                self._prepare_buy_payment(receipt))
             res.append(line.id)
-            count += 1
-            sum_payment_rate += line.payment_rate
 
-        # 创建一览表的平均付款率行
-        payment_rate = count != 0 and sum_payment_rate / count or 0
-        line_total = self.env['buy.payment'].create({
-            'order_name': u'平均付款率',
-            'payment_rate': payment_rate,
-        })
-        res.append(line_total.id)
         return {
             'name': u'采购付款一览表',
             'view_mode': 'tree',

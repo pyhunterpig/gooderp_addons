@@ -15,6 +15,8 @@ odoo.define('core.core', function (require) {
     var data_manager = require('web.data_manager');
     var core = require('web.core');
     var _t = core._t;
+    var FieldBinaryFile = core.form_widget_registry.get('binary');
+    var utils = require('web.utils');
     /*
     One2many字段增加复制按钮
     */
@@ -33,6 +35,7 @@ odoo.define('core.core', function (require) {
             });
         },
         pad_table_to: function (count) {
+            count -=3;    /* 表格预留空行太多很难看 */
             if (this.records.length >= count ||
                 _(this.columns).any(function (column) { return column.meta; })) {
                 return;
@@ -84,7 +87,6 @@ odoo.define('core.core', function (require) {
                     this.$('.oe_view_nocontent').remove();
                     var recored = this.make_empty_record_copy(self.copy_recored.attributes);
                     this.records.add(recored, { at: (this.prepends_on_create()) ? 0 : null });
-                    console.log(recored);
                     this.start_edition(recored, undefined);
                 } else {
                     this._super.apply(this, arguments);
@@ -116,28 +118,12 @@ odoo.define('core.core', function (require) {
             this._super.apply(this, arguments);
         },
     });
-    /**2016-11-15 开阖静静(gilbert@osbzr.com)
-    *在页面的 表头部分 添加公司图标 及公司名称
-     */
-    UserMenu.include({
-          do_update: function () {
-            var self =this;
-            this._super.apply(this, arguments);
-            var $company_avatar = this.$('.oe_top_company_bar_avatar');
-            if (!session.uid) {
-                $company_avatar.attr('src', $company_avatar.data('default-src'));
-                return $.when();
-            }
-            new Model("res.company").call("read", [session.company_id]).then(function(data) {
-                self.$('.oe_topbar_company_name').text(data[0]['display_name']);
-            })
-            var company_avatar_src = session.url('/web/image', {model:'res.company', field: 'logo', id:session.company_id});
-            $company_avatar.attr('src', company_avatar_src);
-        },
-    });
+
     /**
      * 2016-11-15 开阖静静(gilbert@osbzr.com)
      * 把设置默认值的的按钮菜单 放到form菜单的更多里面。
+     * 2017-12-21 Sam(lgz.sam@qq.com)
+     * form view中有input设置autofoucs=true，优先设置input获取焦点
     */
     FormView.include({
        render_sidebar: function($node) {
@@ -153,24 +139,20 @@ odoo.define('core.core', function (require) {
         on_click_set_defaults:function() {
             this.open_defaults_dialog();
         },
-    });
-    /**2016-11-09  开阖静静(gilbert@osbzr.com)
-     * 頁面title 換成自己定義的字符！
-     */
 
-    WebClient.include({
-         init: function(parent) {
-                this._super(parent);
-                this.set('title_part', {"zopenerp": "GoodERP"});
-         },
-        set_title_part: function(part, title) {
-            var tmp = _.clone(this.get("title_part"));
-            tmp[part] = title;
-            if ('zopenerp' in tmp){
-                tmp['zopenerp'] = 'GoodERP';
+        autofocus: function() {
+            this._super.apply(this, arguments);
+
+            var input_widgets = $(':input')
+            for (var i = 0; i < input_widgets.length; i += 1){
+                var input_widget = input_widgets[i]
+                if (input_widget.autofocus) {
+                    if (input_widget.focus() !== false) {
+                        break;
+                    }
+                }
             }
-            this.set("title_part", tmp);
-        },
+        }
     });
     /**2016-11-23  开阖静静(gilbert@osbzr.com)
     * pivot 视图改造 (在pivot 视图中 特殊颜色 标示满足条件的字段) 只需要在对应的字段上例如
@@ -344,4 +326,115 @@ odoo.define('core.core', function (require) {
         }
 
     });
+    /************************************************************
+     *2017-01-10  开阖静静(gilbert@osbzr.com)
+     * 实现在form页面上的 one2many字段 子字段的必输报错的详细提示
+     *对js基础方法的理解不是很深刻，难免用的不是很恰当，有比较好的实现再去修改，
+     * ***********************************************************/
+    FormView.include({
+         on_invalid: function() {
+            var warnings = _(this.fields).chain()
+                .filter(function (f) {return !f.is_valid(); })
+                .map(function (f) {
+                    var  field_list = ''
+                    if((f.field.type=='one2many' || f.field.type=='many2many')){
+                        var list =_.map(f.views[0].fields_view.fields,function (value, key_vals) {
+                            if(value.required ||(value.__attrs && value.__attrs.required==='1')){
+                                return [key_vals,value.string]}
+                        }).filter(function(value){if(value){return value}});
+                        var dict_list = f.dataset.cache;
+                        var list_keys = _.map(list,function (value) {return value[0]});
+                        var list_vals = _.map(list,function (value) {return value[1]});
+                        if(dict_list) {
+                            var index = 0;
+                            var break_flag = false;
+                            field_list = _.map(dict_list, function (value,key) {
+                                index= index+1;
+                                if(break_flag){return undefined}else{
+                                    var field_list_message = _.map(value.values,function (field,field_name) {
+                                        if(field===false &&list_keys.indexOf(field_name)>=0){return field_name
+                                     }else{return undefined}}).filter(function(value){return value});
+                                    if(_.any(field_list_message)){
+                                     break_flag = true
+                                     return "   <li>第"+(index)+"行 "+ list_vals[list_keys.indexOf(field_list_message[0])]+"</li>";}
+                                }
+                           }).filter(function(value){if(value){return value}});
+                        }
+                    }
+                    return _.str.sprintf('<li>%s</li>',_.escape(f.string)+field_list);
+                }).value();
+            warnings.unshift('<ul>');
+            warnings.push('</ul>');
+            this.do_warn(_t("The following fields are invalid:"), warnings.join(''));
+         },
+    });
+// realize pdf view function.
+var FieldPdfViewer = FieldBinaryFile.extend({
+    template: 'FieldPdfViewer',
+    init: function(){
+        this._super.apply(this, arguments);
+        this.PDFViewerApplication = false;
+    },
+    get_uri: function(){
+        var query_obj = {
+            model: this.view.dataset.model,
+            field: this.name,
+            id: this.view.datarecord.id
+        };
+        var query_string = $.param(query_obj);
+        var url = encodeURIComponent('/web/image?' + query_string);
+        var viewer_url = '/web/static/lib/pdfjs/web/viewer.html?file=';
+        return viewer_url + url;
+    },
+    on_file_change: function(ev) {
+        this._super.apply(this, arguments);
+        if(this.PDFViewerApplication){
+            var files = ev.target.files;
+            if (!files || files.length === 0) {
+              return;
+            }
+            var file = files[0];
+            // TOCheck: is there requirement to fallback on FileReader if browser don't support URL
+            this.PDFViewerApplication.open(URL.createObjectURL(file), 0);
+        }
+    },
+    render_value: function() {
+        var $pdf_viewer = this.$('.o_form_pdf_controls').children().add(this.$('.o_pdfview_iframe')),
+            $select_upload_el = this.$('.o_select_file_button').first(),
+            $iFrame = this.$('.o_pdfview_iframe'),
+            value = this.get('value'),
+            self = this;
+
+        var bin_size = utils.is_bin_size(value);
+        $iFrame.on('load', function(){
+            self.PDFViewerApplication = this.contentWindow.window.PDFViewerApplication;
+            self.disable_buttons(this);
+        });
+        if (this.get("effective_readonly")) {
+            if (value) {
+                this.$el.off('click'); // off click event(on_save_as) of FieldBinaryFile
+                $iFrame.attr('src', this.get_uri());
+            }
+        } else {
+            if (value) {
+                $pdf_viewer.removeClass('o_hidden');
+                $select_upload_el.addClass('o_hidden');
+                if(bin_size){
+                    $iFrame.attr('src', this.get_uri());
+                }
+            } else {
+                $pdf_viewer.addClass('o_hidden');
+                $select_upload_el.removeClass('o_hidden');
+            }
+        }
+    },
+    disable_buttons: function(iframe){
+        if (this.get("effective_readonly")){
+            $(iframe).contents().find('button#download').hide();
+        }
+        $(iframe).contents().find('button#openFile').hide();
+    }
+
+});
+core.form_widget_registry.add('pdf_viewer', FieldPdfViewer);
 });

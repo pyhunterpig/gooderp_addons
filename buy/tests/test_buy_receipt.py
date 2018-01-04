@@ -3,16 +3,17 @@ from odoo.tests.common import TransactionCase
 from odoo.exceptions import UserError
 
 
-class test_buy_receipt(TransactionCase):
+class TestBuyReceipt(TransactionCase):
 
     def setUp(self):
-        super(test_buy_receipt, self).setUp()
-        self.env.ref('core.goods_category_1').account_id = self.env.ref('finance.account_goods').id
+        super(TestBuyReceipt, self).setUp()
+        self.env.ref('core.goods_category_1').account_id = self.env.ref(
+            'finance.account_goods').id
         self.order = self.env.ref('buy.buy_order_1')
         self.order.bank_account_id = False
         self.order.buy_order_done()
         self.receipt = self.env['buy.receipt'].search(
-                       [('order_id', '=', self.order.id)])
+            [('order_id', '=', self.order.id)])
         self.return_receipt = self.env.ref('buy.buy_receipt_return_1')
         self.env.ref('warehouse.wh_in_whin0').date = '2016-02-06'
         warehouse_obj = self.env.ref('warehouse.wh_in_whin0')
@@ -26,7 +27,7 @@ class test_buy_receipt(TransactionCase):
         self.env.ref('money.pay_2000').money_order_done()
 
     def test_compute_all_amount(self):
-        '''测试当优惠金额改变时，改变优惠后金额和本次欠款'''
+        '''测试当优惠金额改变时，改变成交金额'''
         self.receipt.discount_amount = 5
         self.assertTrue(self.receipt.amount == 580)
 
@@ -42,7 +43,7 @@ class test_buy_receipt(TransactionCase):
         receipt.buy_receipt_done()
         # 查找产生的付款单，并审核
         source_line = self.env['source.order.line'].search(
-                [('name', '=', receipt.invoice_id.id)])
+            [('name', '=', receipt.invoice_id.id)])
         for line in source_line:
             line.money_id.money_order_done()
         # 判断状态
@@ -55,7 +56,7 @@ class test_buy_receipt(TransactionCase):
         receipt.buy_receipt_done()
         # 查找产生的付款单，并审核
         source_line = self.env['source.order.line'].search(
-                [('name', '=', receipt.invoice_id.id)])
+            [('name', '=', receipt.invoice_id.id)])
         for line in source_line:
             line.money_id.money_order_done()
         # 判断状态
@@ -75,7 +76,7 @@ class test_buy_receipt(TransactionCase):
         return_receipt.buy_receipt_done()
         # 查找产生的付款单，并审核
         source_line = self.env['source.order.line'].search(
-                [('name', '=', return_receipt.invoice_id.id)])
+            [('name', '=', return_receipt.invoice_id.id)])
         for line in source_line:
             line.money_id.money_order_done()
         # 判断状态
@@ -88,7 +89,7 @@ class test_buy_receipt(TransactionCase):
         return_receipt.buy_receipt_done()
         # 查找产生的付款单，并审核
         source_line = self.env['source.order.line'].search(
-                [('name', '=', return_receipt.invoice_id.id)])
+            [('name', '=', return_receipt.invoice_id.id)])
         for line in source_line:
             line.money_id.money_order_done()
         # 判断状态
@@ -107,12 +108,12 @@ class test_buy_receipt(TransactionCase):
     def test_create(self):
         '''创建采购入库单时生成有序编号'''
         receipt = self.env['buy.receipt'].create({
-                                        })
+        })
         self.assertTrue(receipt.origin == 'buy.receipt.buy')
         receipt = self.env['buy.receipt'].with_context({
-                                        'is_return': True
-                                        }).create({
-                                        })
+            'is_return': True
+        }).create({
+        })
         self.assertTrue(receipt.origin == 'buy.receipt.return')
 
     def test_unlink(self):
@@ -123,15 +124,12 @@ class test_buy_receipt(TransactionCase):
             self.receipt.unlink()
 
         # 反审核购货订单，测试删除buy_receipt时是否可以删除关联的wh.move.line记录
-        order = self.order.copy()
-        order.buy_order_done()
+        self.receipt.buy_receipt_draft()
 
-        receipt = self.env['buy.receipt'].search(
-                       [('order_id', '=', order.id)])
-        move_id = receipt.buy_move_id.id
-        order.buy_order_draft()
+        move_id = self.receipt.buy_move_id.id
+        self.order.buy_order_draft()
         move = self.env['wh.move'].search(
-               [('id', '=', move_id)])
+            [('id', '=', move_id)])
         self.assertTrue(not move)
         self.assertTrue(not move.line_in_ids)
 
@@ -176,10 +174,10 @@ class test_buy_receipt(TransactionCase):
             self.return_receipt.buy_receipt_done()
         # 入库单上的采购费用分摊到入库单明细行上
         receipt.cost_line_ids.create({
-                          'buy_id': receipt.id,
-                          'category_id':self.env.ref('core.cat_consult').id,
-                          'partner_id': 4,
-                          'amount': 100, })
+            'buy_id': receipt.id,
+            'category_id': self.env.ref('core.cat_consult').id,
+            'partner_id': 4,
+            'amount': 100, })
         # 测试分摊之前审核是否会弹出警告
         with self.assertRaises(UserError):
             receipt.buy_receipt_done()
@@ -191,7 +189,7 @@ class test_buy_receipt(TransactionCase):
             self.assertTrue(line.using_attribute)
 
     def test_wrong_receipt_done_lot_unique_current(self):
-        '''审核时，当前入库单行之间同一产品批号不能相同'''
+        '''审核时，当前入库单行之间同一商品批号不能相同'''
         receipt = self.env['buy.receipt'].create({
             'partner_id': self.env.ref('core.lenovo').id,
             'date': '2016-09-01',
@@ -212,7 +210,7 @@ class test_buy_receipt(TransactionCase):
             receipt.buy_receipt_done()
 
     def test_wrong_receipt_done_lot_unique_wh(self):
-        '''审核时，当前入库单行与仓库里同一产品批号不能相同'''
+        '''审核时，当前入库单行与仓库里同一商品批号不能相同'''
         receipt = self.env['buy.receipt'].create({
             'partner_id': self.env.ref('core.lenovo').id,
             'date': '2016-09-01',
@@ -227,13 +225,36 @@ class test_buy_receipt(TransactionCase):
         with self.assertRaises(UserError):
             receipt.buy_receipt_done()
 
+    def test_wrong_receipt_done_amount_less_than_zero(self):
+        ''' 测试 购货/退货金额不能小于 0 '''
+        for line in self.receipt.line_in_ids:  # 购货金额不能小于 0
+            line.price_taxed = 0.0
+            line.cost_unit = 0.0
+            line.discount_amount = 10.0
+        with self.assertRaises(UserError):
+            self.receipt.buy_receipt_done()
+
+        for line in self.return_receipt.line_out_ids:  # 退货金额不能小于 0
+            line.price_taxed = 0.0
+            line.cost_unit = 0.0
+            line.discount_amount = 10.0
+        with self.assertRaises(UserError):
+            self.return_receipt.buy_receipt_done()
+
+    def test_receipt_done_no_voucher(self):
+        ''' 测试 采购入库单  没有凭证行 删除凭证 '''
+        for line in self.receipt.line_in_ids:
+            line.price_taxed = 0.0
+            line.cost_unit = 0.0
+        self.receipt.buy_receipt_done()
+
     def test_receipt_make_invoice(self):
         '''审核入库单：不勾按收货结算时'''
         self.order.buy_order_draft()
         self.order.invoice_by_receipt = False
         self.order.buy_order_done()
         receipt = self.env['buy.receipt'].search(
-                       [('order_id', '=', self.order.id)])
+            [('order_id', '=', self.order.id)])
         receipt.buy_receipt_done()
 
     def test_buy_receipt_draft(self):
@@ -250,7 +271,7 @@ class test_buy_receipt(TransactionCase):
             line.goods_qty = 3
         self.receipt.buy_receipt_done()
         receipt = self.env['buy.receipt'].search(
-                       [('order_id', '=', self.order.id)])
+            [('order_id', '=', self.order.id)])
         self.assertTrue(len(receipt) == 2)
 
     def test_scan_barcode(self):
@@ -258,103 +279,127 @@ class test_buy_receipt(TransactionCase):
         warehouse = self.env['wh.move']
         barcode = '12345678987'
         model_name = 'buy.receipt'
-        #采购出库单扫码
+        # 采购出库单扫码
         buy_order_return = self.env.ref('buy.buy_receipt_return_1')
-        warehouse.scan_barcode(model_name,barcode,buy_order_return.id)
-        warehouse.scan_barcode(model_name,barcode,buy_order_return.id)
-        #采购入库单扫码
-        warehouse.scan_barcode(model_name,barcode,self.receipt.id)
-        warehouse.scan_barcode(model_name,barcode,self.receipt.id)
+        warehouse.scan_barcode(model_name, barcode, buy_order_return.id)
+        warehouse.scan_barcode(model_name, barcode, buy_order_return.id)
+        # 采购入库单扫码
+        warehouse.scan_barcode(model_name, barcode, self.receipt.id)
+        warehouse.scan_barcode(model_name, barcode, self.receipt.id)
 
-        # 产品的条形码扫码出入库
+        # 商品的条形码扫码出入库
         barcode = '123456789'
-        #采购入库单扫码
-        warehouse.scan_barcode(model_name,barcode,self.receipt.id)
-        warehouse.scan_barcode(model_name,barcode,self.receipt.id)
-        #采购退货单扫码
+        # 采购入库单扫码
+        warehouse.scan_barcode(model_name, barcode, self.receipt.id)
+        warehouse.scan_barcode(model_name, barcode, self.receipt.id)
+        # 采购退货单扫码
         buy_order_return = self.env.ref('buy.buy_receipt_return_1')
-        warehouse.scan_barcode(model_name,barcode,buy_order_return.id)
-        warehouse.scan_barcode(model_name,barcode,buy_order_return.id)
+        warehouse.scan_barcode(model_name, barcode, buy_order_return.id)
+        warehouse.scan_barcode(model_name, barcode, buy_order_return.id)
 
     def test_onchange_partner_id(self):
-        ''' 测试 改变 partner, 入库单行产品税率变化 '''
-        # partner 无 税率，入库单行产品无税率
+        ''' 测试 改变 partner, 入库单行商品税率变化 '''
+        # partner 无 税率，入库单行商品无税率
         self.env.ref('core.lenovo').tax_rate = 0
         self.env.ref('goods.keyboard').tax_rate = 0
         self.receipt.onchange_partner_id()
-        # partner 有 税率，入库单行产品无税率
+        # partner 有 税率，入库单行商品无税率
         self.env.ref('core.lenovo').tax_rate = 10
         self.env.ref('goods.keyboard').tax_rate = 0
         self.receipt.onchange_partner_id()
-        # partner 无税率，入库单行产品无税率
+        # partner 无税率，入库单行商品无税率
         self.env.ref('core.lenovo').tax_rate = 0
         self.env.ref('goods.keyboard').tax_rate = 10
         self.receipt.onchange_partner_id()
-        # partner 税率 > 入库单行产品税率
+        # partner 税率 > 入库单行商品税率
         self.env.ref('core.lenovo').tax_rate = 11
         self.env.ref('goods.keyboard').tax_rate = 10
         self.receipt.onchange_partner_id()
-        # partner 税率 =< 入库单行产品税率
+        # partner 税率 =< 入库单行商品税率
         self.env.ref('core.lenovo').tax_rate = 11
         self.env.ref('goods.keyboard').tax_rate = 12
         self.receipt.onchange_partner_id()
 
-class test_wh_move_line(TransactionCase):
+    def test_buy_receipt_done_currency(self):
+        """入库单选择外币时审核"""
+        self.order.buy_order_draft()
+        self.order.currency_id = self.env.ref('base.USD')
+        for line in self.order.line_ids:
+            line.tax_rate = 0
+        self.order.buy_order_done()
+        self.receipt = self.env['buy.receipt'].search(
+            [('order_id', '=', self.order.id)])
+        self.receipt.buy_receipt_done()
+
+    def test_buy_to_return(self):
+        '''采购入库单转化为采购退货单'''
+        self.receipt.line_in_ids[0].copy()
+        self.receipt.buy_receipt_done()
+        self.receipt.buy_to_return()
+        with self.assertRaises(UserError):
+            self.receipt.buy_to_return()
+
+        # 该订单已全部退货，再次点击按钮则报错
+        return_order = self.env['buy.receipt'].search([
+            ('is_return', '=', True),
+            ('origin_id', '=', self.receipt.id),
+        ])
+        return_order.buy_receipt_done()
+        with self.assertRaises(UserError):
+            self.receipt.buy_to_return()
+
+
+class TestWhMoveLine(TransactionCase):
 
     def setUp(self):
         '''准备基本数据'''
-        super(test_wh_move_line, self).setUp()
+        super(TestWhMoveLine, self).setUp()
         self.order = self.env.ref('buy.buy_order_1')
         self.order.bank_account_id = False
         self.order.buy_order_done()
         self.receipt = self.env['buy.receipt'].search(
-                       [('order_id', '=', self.order.id)])
+            [('order_id', '=', self.order.id)])
         self.return_receipt = self.env.ref('buy.buy_receipt_return_1')
 
         self.goods_mouse = self.browse_ref('goods.mouse')
 
     def test_onchange_goods_id(self):
         '''测试采购模块中商品的onchange,是否会带出单价'''
-        # 入库单行：修改鼠标成本为0，测试是否报错
         for line in self.receipt.line_in_ids:
             line.onchange_goods_id()
-        self.goods_mouse.cost = 0.0
-        for line in self.receipt.line_in_ids:
-            line.goods_id = self.goods_mouse.id
-            with self.assertRaises(UserError):
-                line.onchange_goods_id()
 
         # 采购退货单行
         for line in self.return_receipt.line_out_ids:
-            line.goods_id.cost = 0.0
-            with self.assertRaises(UserError):
-                line.with_context({'default_is_return': True,
-                    'default_partner': self.return_receipt.partner_id.id}).onchange_goods_id()
             line.goods_id.cost = 1.0
             line.with_context({'default_is_return': True,
-                'default_partner': self.return_receipt.partner_id.id}).onchange_goods_id()
+                               'default_partner': self.return_receipt.partner_id.id}).onchange_goods_id()
 
     def test_onchange_goods_id_tax_rate(self):
-        ''' 测试 修改产品时，入库单行税率变化 '''
+        ''' 测试 修改商品时，入库单行税率变化 '''
         self.receipt.partner_id = self.env.ref('core.lenovo')
         for order_line in self.receipt.line_in_ids:
-            # partner 无 税率，入库单行产品无税率
+            # partner 无 税率，入库单行商品无税率
             self.env.ref('core.lenovo').tax_rate = 0
             self.env.ref('goods.keyboard').tax_rate = 0
-            order_line.with_context({'default_partner': self.receipt.partner_id.id}).onchange_goods_id()
-            # partner 有 税率，入库单行产品无税率
+            order_line.with_context(
+                {'default_partner': self.receipt.partner_id.id}).onchange_goods_id()
+            # partner 有 税率，入库单行商品无税率
             self.env.ref('core.lenovo').tax_rate = 10
             self.env.ref('goods.keyboard').tax_rate = 0
-            order_line.with_context({'default_partner': self.receipt.partner_id.id}).onchange_goods_id()
-            # partner 无税率，入库单行产品有税率
+            order_line.with_context(
+                {'default_partner': self.receipt.partner_id.id}).onchange_goods_id()
+            # partner 无税率，入库单行商品有税率
             self.env.ref('core.lenovo').tax_rate = 0
             self.env.ref('goods.keyboard').tax_rate = 10
-            order_line.with_context({'default_partner': self.receipt.partner_id.id}).onchange_goods_id()
-            # partner 税率 > 入库单行产品税率
+            order_line.with_context(
+                {'default_partner': self.receipt.partner_id.id}).onchange_goods_id()
+            # partner 税率 > 入库单行商品税率
             self.env.ref('core.lenovo').tax_rate = 11
             self.env.ref('goods.keyboard').tax_rate = 10
-            order_line.with_context({'default_partner': self.receipt.partner_id.id}).onchange_goods_id()
-            # partner 税率 =< 入库单行产品税率
+            order_line.with_context(
+                {'default_partner': self.receipt.partner_id.id}).onchange_goods_id()
+            # partner 税率 =< 入库单行商品税率
             self.env.ref('core.lenovo').tax_rate = 9
             self.env.ref('goods.keyboard').tax_rate = 10
-            order_line.with_context({'default_partner': self.receipt.partner_id.id}).onchange_goods_id()
+            order_line.with_context(
+                {'default_partner': self.receipt.partner_id.id}).onchange_goods_id()

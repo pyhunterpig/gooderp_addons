@@ -23,10 +23,10 @@
 			<field name="warehouse_id" ref="warehouse.warehouse_others"/>
 			<field name="name">WH/IN/16040003</field>
 			<field name="type">others</field>
+			<field name="finance_category_id" ref='core.cat_donate'/>
 			<field name="date">2016-04-02</field>
 		</record>
 		<record id="wh_move_line_keyboard_mouse_in_2" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.keyboard_mouse" />
 			<field name="production_date">2016-04-02</field>
 			<field name="state">draft</field>
@@ -45,7 +45,6 @@
 			<field name="date">2016-04-02</field>
 		</record>
 		<record id="wh_move_line_12" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name='uom_id' ref='core.uom_pc' />
 			<field name='uos_id' ref='core.uom_pc' />
 			<field name="goods_id" ref="goods.mouse"/>
@@ -58,7 +57,6 @@
 			<field model="wh.move" name="move_id" search="[('name', '=', u'WH/IN/16040002')]"/>
 		</record>
 		<record id="wh_move_line_mouse_2" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name='uom_id' ref='core.uom_pc' />
 			<field name='uos_id' ref='core.uom_pc' />
 			<field name="goods_id" ref="goods.mouse"/>
@@ -71,7 +69,6 @@
 			<field model="wh.move" name="move_id" search="[('name', '=', u'WH/IN/16040002')]"/>
 		</record>
 		<record id="wh_move_line_13" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field eval="0" name="force_batch_one"/>
 			<field name='uom_id' ref='core.uom_pc' />
 			<field name='uos_id' ref='core.uom_pc' />
@@ -85,7 +82,6 @@
 			<field model="wh.move" name="move_id" search="[('name', '=', u'WH/IN/16040002')]"/>
 		</record>
 		<record id="wh_move_line_14" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.cable"/>
 			<field name='uom_id' ref='core.uom_pc' />
 			<field name='uos_id' ref='core.uom_set' />
@@ -117,7 +113,6 @@
 			<field name="date">2016-04-02</field>
 		</record>
 		<record id="wh_move_line_0" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field model="wh.move.line" name="lot_id" search="[('lot', '=', 'ms160301')]"/>
 			<field name='uom_id' ref='core.uom_pc' />
 			<field name='uos_id' ref='core.uom_pc' />
@@ -128,7 +123,6 @@
 			<field model="wh.move" name="move_id" search="[('name', '=', u'ASS/16040001')]"/>
 		</record>
 		<record id="wh_move_line_2" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field eval="600.0" name="lot_uos_qty"/>
 			<field model="wh.move.line" name="lot_id" search="[('lot', '=', 'kb160000567')]"/>
 			<field name="goods_id" ref="goods.keyboard"/>
@@ -141,7 +135,6 @@
 			<field model="wh.move" name="move_id" search="[('name', '=', u'ASS/16040001')]"/>
 		</record>
 		<record id="wh_move_line_3" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.keyboard_mouse"/>
 			<field name="production_date">2016-04-02</field>
 			<field name='uom_id' ref='core.uom_set' />
@@ -157,7 +150,6 @@
 			<field name="date">2016-04-07</field>
 		</record>
 		<record id="wh_move_line_mouse0" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field model="wh.move.line" name="lot_id" search="[('lot', '=', 'ms160301')]"/>
 			<field name='uom_id' ref='core.uom_pc' />
 			<field name='uos_id' ref='core.uom_pc' />
@@ -168,7 +160,6 @@
 			<field model="wh.move" name="move_id" search="[('name', '=', u'ASS/16040002')]"/>
 		</record>
 		<record id="wh_move_line_mouse1" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field model="wh.move.line" name="lot_id" search="[('lot', '=', 'ms160302')]"/>
 			<field name='uom_id' ref='core.uom_pc' />
 			<field name='uos_id' ref='core.uom_pc' />
@@ -179,7 +170,6 @@
 			<field model="wh.move" name="move_id" search="[('name', '=', u'ASS/16040002')]"/>
 		</record>
 		<record id="wh_move_line_ass1" model="wh.move.line">
-			<field eval="2.0" name="goods_uos_qty"/>
 			<field eval="600.0" name="lot_uos_qty"/>
 			<field model="wh.move.line" name="lot_id" search="[('lot', '=', 'kb160000567')]"/>
 			<field name="goods_id" ref="goods.keyboard"/>
@@ -192,7 +182,6 @@
 			<field model="wh.move" name="move_id" search="[('name', '=', u'ASS/16040002')]"/>
 		</record>
 		<record id="wh_move_line_ass2" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.keyboard_mouse"/>
 			<field name="production_date">2016-04-02</field>
 			<field name='uom_id' ref='core.uom_set' />
@@ -202,7 +191,6 @@
 			<field model="wh.move" name="move_id" search="[('name', '=', u'ASS/16040002')]"/>
 		</record>
 		<record id="wh_move_line_ass3" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.keyboard_mouse"/>
 			<field name="production_date">2016-04-07</field>
 			<field name='uom_id' ref='core.uom_set' />
@@ -222,7 +210,6 @@
             <field name="date">2016-04-02</field>
         </record>
         <record id="wh_move_line_out1" model="wh.move.line">
-            <field eval="1.0" name="goods_uos_qty"/>
             <field model="wh.move.line" name="lot_id" search="[('lot', '=', 'ms160301')]"/>
             <field name='uom_id' ref='core.uom_pc' />
             <field name='uos_id' ref='core.uom_pc' />
@@ -233,7 +220,6 @@
             <field model="wh.move" name="move_id" search="[('name', '=', u'OUT/16040001')]"/>
         </record>
         <record id="wh_move_line_out2" model="wh.move.line">
-            <field eval="1.0" name="goods_uos_qty"/>
             <field eval="600.0" name="lot_uos_qty"/>
             <field model="wh.move.line" name="lot_id" search="[('lot', '=', 'kb160000567')]"/>
             <field name="goods_id" ref="goods.keyboard"/>
@@ -246,7 +232,6 @@
             <field model="wh.move" name="move_id" search="[('name', '=', u'OUT/16040001')]"/>
         </record>
         <record id="wh_move_line_out3" model="wh.move.line">
-            <field eval="1.0" name="goods_uos_qty"/>
             <field name="goods_id" ref="goods.keyboard_mouse"/>
             <field name="production_date">2016-04-02</field>
             <field name='uom_id' ref='core.uom_set' />
@@ -297,7 +282,6 @@
 			<field name="date">2016-04-02</field>
 		</record>
 		<record id="wh_move_line_7" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.keyboard_mouse"/>
 			<field name='uom_id' ref='core.uom_set' />
 			<field name='uos_id' ref='core.uom_set' />
@@ -308,7 +292,6 @@
 			<field model="wh.move" name="move_id" search="[('name', '=', u'DIS/16040001')]"/>
 		</record>
 		<record id="wh_move_line_8" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.mouse"/>
 			<field name='uom_id' ref='core.uom_pc' />
 			<field name='uos_id' ref='core.uom_pc' />
@@ -320,7 +303,6 @@
 			<field model="wh.move" name="move_id" search="[('name', '=', u'DIS/16040001')]"/>
 		</record>
 		<record id="wh_move_line_9" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.keyboard"/>
 			<field name='attribute_id' ref='goods.keyboard_white' />
 			<field name="production_date">2016-04-02</field>
@@ -339,10 +321,10 @@
 			<field name="warehouse_id" ref="warehouse.warehouse_others"/>
 			<field name="name">WH/IN/16040001</field>
 			<field name="type">others</field>
+			<field name="finance_category_id" ref='core.cat_donate'/>
 			<field name="date">2016-04-02</field>
 		</record>
 		<record id="wh_move_line_16" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.keyboard_mouse" />
 			<field name="production_date">2016-04-02</field>
 			<field name="state">draft</field>
@@ -354,7 +336,6 @@
 			<field model="wh.move" name="move_id" search="[('name', '=', u'WH/IN/16040001')]"/>
 		</record>
 		<record id="wh_move_line_15" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.cable" />
 			<field name="production_date">2016-04-02</field>
 			<field name="state">draft</field>
@@ -370,10 +351,10 @@
 			<field name="warehouse_id" ref="warehouse.warehouse_others"/>
 			<field name="name">WH/IN/16040004</field>
 			<field name="type">others</field>
+			<field name="finance_category_id" ref='core.cat_donate'/>
 			<field name="date">2016-04-02</field>
 		</record>
 		<record id="wh_move_line_iphone_in_1" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.iphone" />
 			<field name="production_date">2016-04-02</field>
 			<field name="state">draft</field>
@@ -386,7 +367,6 @@
 			<field model="wh.move" name="move_id" search="[('name', '=', u'WH/IN/16040004')]"/>
 		</record>
 		<record id="wh_move_line_iphone_in_2" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.iphone" />
 			<field name="production_date">2016-04-02</field>
 			<field name="state">draft</field>
@@ -402,31 +382,30 @@
 	<data noupdate="1">
 		<record id="wh_internal_whint0" model="wh.internal">
 		    <field name="warehouse_dest_id" ref="warehouse.sh_stock"/>
-			<field name="name">WH/INT/16040001</field>
+			<field name="name">TRANSFER/16040001</field>
 			<field name="date">2016-04-02</field>
 			<field name="warehouse_id" ref="warehouse.hd_stock"/>
 		</record>
 		<record id="wh_move_line_17" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.cable"/>
 			<field name="production_date">2016-04-02</field>
 			<field name='uom_id' ref='core.uom_pc' />
 			<field name='uos_id' ref='core.uom_set' />
 			<field eval="120.0" name="goods_qty"/>
-			<field name="type">out</field>
-			<field model="wh.move" name="move_id" search="[('name', '=', u'WH/INT/16040001')]"/>
+			<field name="type">internal</field>
+			<field model="wh.move" name="move_id" search="[('name', '=', u'TRANSFER/16040001')]"/>
 		</record>
 	</data>
 	<data noupdate="1">
 		<record id="wh_out_wh_out_attribute" model="wh.out">
 			<field name="name">WH/OUT/16040003</field>
 			<field name="type">others</field>
+			<field name="finance_category_id" ref='core.cat_donate'/>
 			<field name="date">2016-04-02</field>
 			<field name="warehouse_dest_id" ref="warehouse.warehouse_others"/>
 			<field name="warehouse_id" ref="warehouse.hd_stock"/>
 		</record>
 		<record id="wh_move_line_iphone_out" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.iphone"/>
 			<field name='attribute_id' ref='goods.iphone_white' />
 			<field name='uom_id' ref='core.uom_pc' />
@@ -442,10 +421,10 @@
 			<field name="warehouse_id" ref="warehouse.sh_stock"/>
 			<field name="name">WH/OUT/16040001</field>
 			<field name="type">others</field>
+			<field name="finance_category_id" ref='core.cat_donate'/>
 			<field name="date">2016-04-02</field>
 		</record>
 		<record id="wh_move_line_18" model="wh.move.line">
-			<field eval="1.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.cable"/>
 			<field name='uom_id' ref='core.uom_pc' />
 			<field name='uos_id' ref='core.uom_set' />
@@ -459,11 +438,11 @@
 		    <field name="warehouse_dest_id" ref="warehouse.warehouse_others"/>
 			<field name="name">WH/OUT/16040002</field>
 			<field name="type">others</field>
+			<field name="finance_category_id" ref='core.cat_donate'/>
 			<field name="date">2016-04-02</field>
 			<field name="warehouse_id" ref="warehouse.hd_stock"/>
 		</record>
 		<record id="wh_move_line_out_2" model="wh.move.line">
-			<field eval="2.0" name="goods_uos_qty"/>
 			<field name="goods_id" ref="goods.keyboard_mouse"/>
 			<field name='uom_id' ref='core.uom_pc' />
 			<field name='uos_id' ref='core.uom_set' />
@@ -473,5 +452,15 @@
 			<field eval="18.0" name="cost_unit"/>
 			<field model="wh.move" name="move_id" search="[('name', '=', u'WH/OUT/16040002')]"/>
 		</record>
+
+		<record id='a001_location' model='location'>
+		    <field name='name'>a0001</field>
+		    <field name='warehouse_id' ref='warehouse.hd_stock'/>
+        </record>
+        <record id='b001_location' model='location'>
+            <field name='name'>b0001</field>
+            <field name='warehouse_id' ref='warehouse.hd_stock'/>
+        </record>
+
 	</data>
 </openerp>

@@ -3,12 +3,13 @@ from odoo.tests.common import TransactionCase
 from odoo.exceptions import UserError
 
 
-class test_reconcile_order(TransactionCase):
+class TestReconcileOrder(TransactionCase):
 
     def setUp(self):
-        super(test_reconcile_order, self).setUp()
+        super(TestReconcileOrder, self).setUp()
         # 给core.comm收一笔款
-        self.money_get_40000 = self.env.ref('money.get_40000').money_order_done()
+        self.money_get_40000 = self.env.ref(
+            'money.get_40000').money_order_done()
         self.get_invoice = self.env['money.invoice'].create({'partner_id': self.env.ref('core.jd').id,
                                                              'name': 'invoice/201600661', 'date': "2016-02-20",
                                                              'category_id': self.env.ref('money.core_category_sale').id,
@@ -24,6 +25,7 @@ class test_reconcile_order(TransactionCase):
 
     def test_money_invoice_done(self):
         # money.invoice 没有设置科目 银行账户没设置科目
+        self.get_invoice.partner_id.receivable = 0
         self.get_invoice.partner_id.c_category_id = False
         self.get_invoice.partner_id.s_category_id = False
         with self.assertRaises(UserError):
@@ -52,6 +54,11 @@ class test_reconcile_order(TransactionCase):
         reconcile.partner_id = self.env.ref('core.lenovo').id
         reconcile.onchange_partner_id()
         reconcile.advance_payment_ids.this_reconcile = 600.0
+        reconcile.payable_source_ids[0].this_reconcile = 700.0
+        # 核销金额不能大于未核销金额。\n核销金额:700 未核销金额:600
+        with self.assertRaises(UserError):
+            reconcile.reconcile_order_done()
+
         reconcile.payable_source_ids[0].this_reconcile = 600.0
         reconcile.reconcile_order_done()
 
@@ -117,7 +124,8 @@ class test_reconcile_order(TransactionCase):
         reconcile.unlink()
         # 核销金额必须相同
         self.pay_invoice.money_invoice_done()
-        reconcile_adv_get_to_pay = self.env.ref('money.reconcile_adv_get_to_pay')
+        reconcile_adv_get_to_pay = self.env.ref(
+            'money.reconcile_adv_get_to_pay')
         reconcile_adv_get_to_pay.partner_id = self.env.ref('core.lenovo').id
         reconcile_adv_get_to_pay.onchange_partner_id()
         with self.assertRaises(UserError):

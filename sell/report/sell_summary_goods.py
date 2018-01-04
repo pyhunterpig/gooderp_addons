@@ -4,7 +4,8 @@ from odoo import fields, models, api
 import odoo.addons.decimal_precision as dp
 import datetime
 
-class sell_summary_goods(models.Model):
+
+class SellSummaryGoods(models.Model):
     _name = 'sell.summary.goods'
     _inherit = 'report.base'
     _description = u'销售汇总表（按商品）'
@@ -19,7 +20,7 @@ class sell_summary_goods(models.Model):
     uos = fields.Char(u'辅助单位')
     qty = fields.Float(u'基本数量', digits=dp.get_precision('Quantity'))
     uom = fields.Char(u'基本单位')
-    price = fields.Float(u'单价', digits=dp.get_precision('Amount'))
+    price = fields.Float(u'单价', digits=dp.get_precision('Price'))
     amount = fields.Float(u'销售收入', digits=dp.get_precision('Amount'))
     tax_amount = fields.Float(u'税额', digits=dp.get_precision('Amount'))
     subtotal = fields.Float(u'价税合计', digits=dp.get_precision('Amount'))
@@ -118,7 +119,7 @@ class sell_summary_goods(models.Model):
 
     def _compute_order(self, result, order):
         order = order or 'goods_code ASC'
-        return super(sell_summary_goods, self)._compute_order(result, order)
+        return super(SellSummaryGoods, self)._compute_order(result, order)
 
     def collect_data_by_sql(self, sql_type='out'):
         collection = self.execute_sql(sql_type='out')
@@ -137,7 +138,7 @@ class sell_summary_goods(models.Model):
             if line.get('id') == self.id:
                 line_ids = line.get('id_lists')
                 move_lines = self.env['wh.move.line'].search(
-                        [('id', 'in', line_ids)])
+                    [('id', 'in', line_ids)])
 
         for move_line in move_lines:
             details = self.env['sell.order.detail'].search(

@@ -5,7 +5,7 @@ from odoo import fields, models, api
 import datetime
 
 
-class buy_summary_partner(models.Model):
+class BuySummaryPartner(models.Model):
     _name = 'buy.summary.partner'
     _inherit = 'report.base'
     _description = u'采购汇总表（按供应商）'
@@ -22,7 +22,7 @@ class buy_summary_partner(models.Model):
     uos = fields.Char(u'辅助单位')
     qty = fields.Float(u'基本数量', digits=dp.get_precision('Quantity'))
     uom = fields.Char(u'基本单位')
-    price = fields.Float(u'单价', digits=dp.get_precision('Amount'))
+    price = fields.Float(u'单价', digits=dp.get_precision('Price'))
     amount = fields.Float(u'采购金额', digits=dp.get_precision('Amount'))
     tax_amount = fields.Float(u'税额', digits=dp.get_precision('Amount'))
     subtotal = fields.Float(u'价税合计', digits=dp.get_precision('Amount'))
@@ -110,18 +110,18 @@ class buy_summary_partner(models.Model):
             'date_start': context.get('date_start') or '',
             'date_end': date_end,
             'partner_id': context.get('partner_id') and
-                context.get('partner_id')[0] or '',
+            context.get('partner_id')[0] or '',
             'goods_id': context.get('goods_id') and
-                context.get('goods_id')[0] or '',
+            context.get('goods_id')[0] or '',
             's_category_id': context.get('s_category_id') and
-                context.get('s_category_id')[0] or '',
+            context.get('s_category_id')[0] or '',
             'warehouse_dest_id': context.get('warehouse_dest_id') and
-                context.get('warehouse_dest_id')[0] or '',
+            context.get('warehouse_dest_id')[0] or '',
         }
 
     def _compute_order(self, result, order):
         order = order or 'partner ASC'
-        return super(buy_summary_partner, self)._compute_order(result, order)
+        return super(BuySummaryPartner, self)._compute_order(result, order)
 
     def collect_data_by_sql(self, sql_type='out'):
         collection = self.execute_sql(sql_type='out')
@@ -140,7 +140,7 @@ class buy_summary_partner(models.Model):
             if line.get('id') == self.id:
                 line_ids = line.get('id_lists')
                 move_lines = self.env['wh.move.line'].search(
-                        [('id', 'in', line_ids)])
+                    [('id', 'in', line_ids)])
 
         for move_line in move_lines:
             details = self.env['buy.order.detail'].search(

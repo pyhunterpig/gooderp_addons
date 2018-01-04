@@ -9,6 +9,14 @@ odoo.define('web_responsive', function(require) {
     var Class = require('web.Class');
     var SearchView = require('web.SearchView');
     var core = require('web.core');
+    var WebClient = require('web.WebClient');
+
+    WebClient.include({
+        update_logo: function(reload) {
+            //安装主题后这个方法没有用武之地,
+            //因为想要用对应的class,导致对应的图片更新给带有这个这个class的的图片都会更新为公司图片
+        }
+    })
 
     Menu.include({
 
@@ -88,7 +96,7 @@ odoo.define('web_responsive', function(require) {
                                 'a.oe_menu_toggler'
                                 );
             $clickZones.click($.proxy(this.handleClickZones, this));
-            core.bus.on('resize', this, this.handleWindowResize);
+            //core.bus.on('resize', this, this.handleWindowResize);
             core.bus.on('keydown', this, this.handleNavKeys);
         },
 
@@ -96,22 +104,24 @@ odoo.define('web_responsive', function(require) {
         initDrawer: function() {
             this.$el = $('.drawer');
             this.$el.drawer();
-            this.$el.one('drawer.opened', $.proxy(this.onDrawerOpen, this));
-            this.$el.on('drawer.opened', function setIScrollProbes(){
-                var onIScroll = function() {
-                    var transform = (this.iScroll.y) ? this.iScroll.y * -1 : 0;
-                    $(this).find('#appDrawerAppPanelHead').css(
-                        'transform', 'matrix(1, 0, 0, 1, 0, ' + transform + ')'
-                    );
-                };
-                this.iScroll.options.probeType = 2;
-                this.iScroll.on('scroll', $.proxy(onIScroll, this));
-            });
+            // 手机端的滑动效果不好,先去除 apps 所在的div 的自动定位屏幕最顶端.
+            // this.$el.on('drawer.opened', function setIScrollProbes(){
+            //     var onIScroll = function() {
+            //         var transform = (this.iScroll.y) ? this.iScroll.y * -1 : 0;
+            //         $(this).find('#appDrawerAppPanelHead').css(
+            //             'transform', 'matrix(1, 0, 0, 1, 0, ' + transform + ')'
+            //         );
+            //     };
+            //     this.iScroll.options.probeType = 2;
+            //     this.iScroll.on('scroll', $.proxy(onIScroll, this));
+            // });
             this.initialized = true;
         },
 
         // It provides handlers to hide drawer when "unfocused"
         handleClickZones: function() {
+            //点击后二级菜单隐藏 by 河北-彩云
+            $('#odooMenuBarNav').attr('aria-expanded','false')
             this.$el.drawer('close');
             $('.o_sub_menu_content')
                 .parent()

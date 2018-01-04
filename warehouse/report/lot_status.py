@@ -5,11 +5,12 @@ import odoo.addons.decimal_precision as dp
 from odoo import models, fields
 
 
-class report_lot_status(models.Model):
+class ReportLotStatus(models.Model):
     _name = 'report.lot.status'
+    _description = u'批次余额表'
     _auto = False
 
-    goods = fields.Char(u'产品')
+    goods = fields.Char(u'商品')
     uom = fields.Char(u'单位')
     uos = fields.Char(u'辅助单位')
     lot = fields.Char(u'批号')
@@ -19,6 +20,8 @@ class report_lot_status(models.Model):
     date = fields.Date(u'日期')
     qty = fields.Float(u'数量', digits=dp.get_precision('Quantity'))
     uos_qty = fields.Float(u'辅助数量', digits=dp.get_precision('Quantity'))
+    cost = fields.Float(u'单价', digits=dp.get_precision('Amount'))
+    amount = fields.Float(u'金额', digits=dp.get_precision('Amount'))
 
     def init(self):
         cr = self._cr
@@ -28,6 +31,8 @@ class report_lot_status(models.Model):
             create or replace view report_lot_status as (
                 SELECT MIN(line.id) as id,
                         goods.name as goods,
+                        goods.cost as cost,
+                        goods.cost * sum(line.qty_remaining) as amount,
                         uom.name as uom,
                         uos.name as uos,
                         line.lot as lot,
@@ -49,7 +54,7 @@ class report_lot_status(models.Model):
                   AND wh.type = 'stock'
                   AND line.state = 'done'
 
-                GROUP BY goods, uom, uos, lot, attribute_id, warehouse
+                GROUP BY goods, uom, uos, lot, attribute_id, warehouse, goods.cost
 
                 ORDER BY goods, lot, warehouse
             )

@@ -4,7 +4,7 @@ import odoo.addons.decimal_precision as dp
 from odoo import fields, models, api
 
 
-class buy_payment(models.TransientModel):
+class BuyPayment(models.TransientModel):
     _name = 'buy.payment'
     _description = u'采购付款一览表'
 
@@ -16,7 +16,7 @@ class buy_payment(models.TransientModel):
     order_name = fields.Char(u'单据编号')
     purchase_amount = fields.Float(u'采购金额', digits=dp.get_precision('Amount'))
     discount_amount = fields.Float(u'优惠金额', digits=dp.get_precision('Amount'))
-    amount = fields.Float(u'优惠后金额', digits=dp.get_precision('Amount'))
+    amount = fields.Float(u'成交金额', digits=dp.get_precision('Amount'))
     payment = fields.Float(u'已付款', digitse=dp.get_precision('Amount'))
     balance = fields.Float(u'应付款余额', digits=dp.get_precision('Amount'))
     payment_rate = fields.Float(u'付款率(%)')
@@ -26,13 +26,14 @@ class buy_payment(models.TransientModel):
     def view_detail(self):
         '''查看明细按钮'''
         self.ensure_one()
-        order = self.env['buy.receipt'].search([('name', '=', self.order_name)])
+        order = self.env['buy.receipt'].search(
+            [('name', '=', self.order_name)])
         if order:
             if not order.is_return:
                 view = self.env.ref('buy.buy_receipt_form')
             else:
                 view = self.env.ref('buy.buy_return_form')
-            
+
             return {
                 'name': u'采购入库单',
                 'view_type': 'form',

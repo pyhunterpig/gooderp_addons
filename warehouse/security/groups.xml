@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <openerp>
-	<data noupdate="0">
+	<data noupdate="1">
 		<!--添加管理仓库组-->
 		<record id="group_warehouse" model="res.groups">
 			<field name='name'>仓库</field>
@@ -13,6 +13,24 @@
 			<field name='category_id' ref="core.good_warehouse"/>
 			<field name="users" eval="[(4, ref('base.user_root'))]"/>
 		</record>
+		<!--添加管理净重组-->
+		<record id='manager_net_weight_group' model='res.groups'>
+			<field name='name'>管理净重组</field>
+			<field name='category_id' ref="core.good_warehouse"/>
+			<field name="users" eval="[(4, ref('base.user_root'))]"/>
+		</record>
+		<!--管理保质期组-->
+		<record id='group_expiration_date' model='res.groups'>
+			<field name='name'>管理保质期</field>
+			<field name='category_id' ref="core.good_warehouse"/>
+			<field name="users" eval="[(4, ref('base.user_root'))]"/>
+		</record>
+		<!--管理质检报告组-->
+		<record id='group_qc' model='res.groups'>
+			<field name='name'>管理质检</field>
+			<field name='category_id' ref="core.good_warehouse"/>
+			<field name="users" eval="[(4, ref('base.user_root'))]"/>
+		</record>
 		<!--添加管理其它出库单审核组-->
 		<record id='other_out_picking_groups' model='res.groups'>
 			<field name='name'>其它出库单审核</field>
@@ -22,6 +40,12 @@
 		<!--添加管理多个仓库组-->
 		<record id='multi_warehouse_groups' model='res.groups'>
 			<field name='name'>管理多个仓库</field>
+			<field name='category_id' ref="core.good_warehouse"/>
+			<field name="users" eval="[(4, ref('base.user_root'))]"/>
+		</record>
+		<!--添加管理多个库位-->
+		<record id='multi_location_groups' model='res.groups'>
+			<field name='name'>管理多个库位</field>
 			<field name='category_id' ref="core.good_warehouse"/>
 			<field name="users" eval="[(4, ref('base.user_root'))]"/>
 		</record>
