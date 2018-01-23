@@ -28,6 +28,14 @@ class TestProduction(TransactionCase):
         self.disassembly_keyboard = self.browse_ref('warehouse.wh_move_line_9')
 
         self.overage_in = self.browse_ref('warehouse.wh_in_whin0')
+        in_mouse_1 = self.env.ref('warehouse.wh_move_line_12')
+        in_mouse_1.cost = in_mouse_1.cost_unit * in_mouse_1.goods_qty
+        in_mouse_2 = self.env.ref('warehouse.wh_move_line_mouse_2')
+        in_mouse_2.cost = in_mouse_2.cost_unit * in_mouse_2.goods_qty
+        in_keyboard = self.env.ref('warehouse.wh_move_line_13')
+        in_keyboard.cost = in_keyboard.cost_unit * in_keyboard.goods_qty
+        in_cable = self.env.ref('warehouse.wh_move_line_14')
+        in_cable.cost = in_cable.cost_unit * in_cable.goods_qty
         self.overage_in.approve_order()
 
         self.outsource_out1 = self.browse_ref('warehouse.outsource_out1')
@@ -45,6 +53,25 @@ class TestProduction(TransactionCase):
 
         self.assertEqual(self.assembly.state, 'done')
         self.assertEqual(self.disassembly.state, 'done')
+
+    def test_approve_outsource_goods_lots(self):
+        # 有批号委外加工单入库
+        self.outsource_out1.approve_feeding()
+        self.outsource_out1.lot = '123'
+        self.outsource_out1.approve_order()
+
+    def test_approve_assembly_disassembly_goods_lots(self):
+        # 有批号组装单入库
+        self.assembly.approve_feeding()
+        self.assembly.lot = '123'
+        self.assembly.approve_order()
+
+        # 有批号拆卸单组合产品出库
+        lot_id = self.env['wh.move.line'].search([('state', '=', 'done'),
+                                                  ('goods_id', '=', self.env.ref('goods.keyboard_mouse').id)])
+        self.disassembly.lot_id = lot_id.id
+        self.disassembly.approve_feeding()
+        self.disassembly.approve_order()
 
     def test_assembly_apporve_exist_scape(self):
         # 组装单成品入库存在报废

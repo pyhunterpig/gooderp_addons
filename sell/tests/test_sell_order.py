@@ -186,6 +186,22 @@ class TestSellOrder(TransactionCase):
         delivery.sell_delivery_done()
         self.order.action_view_delivery()
 
+        # 先入库
+        order_2 = self.env.ref('sell.sell_order_2')
+        warehouse_obj = self.env.ref('warehouse.wh_in_whin0')
+        warehouse_obj.approve_order()
+        order_2.sell_order_done()
+
+        delivery_2 = self.env['sell.delivery'].search([('order_id', '=', order_2.id)])
+        for line in delivery_2.line_out_ids:
+            line.goods_qty = 8
+        delivery_2.sell_delivery_done()
+        # len(delivery_ids) > 1
+        order_2.action_view_delivery()
+
+        # compute_delivery_count
+        self.assertTrue(order_2.delivery_count == 2)
+
 
 class TestSellOrderLine(TransactionCase):
 
@@ -214,7 +230,12 @@ class TestSellOrderLine(TransactionCase):
         self.assertEqual(self.sell_order_line.subtotal, 107)
 
     def test_compute_all_amount_foreign_currency(self):
-        '''外币测试：当订单行的数量、含税单价、折扣额、税率改变时，改变销售金额、税额、价税合计'''
+        # '''外币测试：当订单行的数量、含税单价、折扣额、税率改变时，改变销售金额、税额、价税合计'''
+        # 本位币
+        self.order.currency_id = self.env.ref('base.CNY')
+        for line in self.order.line_ids:
+            line.price_taxed = 11.7
+
         self.order.currency_id = self.env.ref('base.EUR')
         for line in self.order.line_ids:
             line.price_taxed = 11.7
@@ -288,3 +309,42 @@ class TestSellOrderLine(TransactionCase):
         self.sell_order_line.discount_rate = 20
         self.sell_order_line.onchange_discount_rate()
         self.assertEqual(self.sell_order_line.amount, 93.6)
+
+
+class TestApproveMultiSellOrder(TransactionCase):
+    def setUp(self):
+        ''' setUp Data '''
+        super(TestApproveMultiSellOrder, self).setUp()
+        self.env.ref('core.jd').credit_limit = 100000
+        self.order = self.env.ref('sell.sell_order_1')
+        self.order_2 = self.env.ref('sell.sell_order_2')
+        self.partner_id = self.env.ref('core.jd')
+
+        # 因同一个业务伙伴不能存在两张未审核的收付款单，把系统里已有的相关业务伙伴未审核的收付款单审核
+        self.env.ref('money.get_40000').money_order_done()
+        self.env.ref('money.pay_2000').money_order_done()
+
+    def test_fields_view_get(self):
+        ''' Test: fields_view_get '''
+        sell_obj = self.env['approve.multi.sell.order']
+        # 报错：存在销售订单已审核的单据
+        self.order_2.sell_order_done()
+        with self.assertRaises(UserError):
+            sell_obj.with_context({
+                'active_model': 'sell.order',
+                'active_ids': [self.order.id, self.order_2.id]
+            }).fields_view_get(None, 'form', False, False)
+
+    def test_approve_sell_order(self):
+        ''' Test: approve_sell_order '''
+        sell_obj = self.env['approve.multi.sell.order']
+        # 批量审核销售订单
+        sell_obj.with_context({
+            'active_ids': [self.order.id, self.order_2.id]
+        }).approve_sell_order()
+
+    def test_set_default_note(self):
+        ''' Test: set_default_note '''
+        sell_obj = self.env['approve.multi.sell.order']
+        # 设置默认值
+        sell_obj.set_default_note()
